@@ -25,14 +25,16 @@ def build_vectors():
     df = products.copy()
     # Normalize price
     df["price_norm"] = df["price"] / df["price"].max()
-    # One-hot encode category (creates 2 columns: category_electronics, category_footwear)
-    df = pd.get_dummies(df, columns=["category"])
-    # Features left: rating (1), price_norm (1), category_electronics (1), category_footwear (1) = 4 Features Total
-    return df.drop(["id", "name", "price"], axis=1).values
+    
+    # FIX: Explicitly set dtype=int to prevent boolean (True/False) generation
+    df = pd.get_dummies(df, columns=["category"], dtype=int)
+    
+    # FIX: Force cast the entire numpy matrix to float32 to prevent object_ type issues in PyTorch
+    return df.drop(["id", "name", "price"], axis=1).values.astype(np.float32)
 
-# Derive feature dimensions dynamically to prevent ValueError shape mismatches
+# Derive feature dimensions dynamically to keep system matrices perfectly aligned
 PRODUCT_VECTORS = build_vectors()
-FEATURE_DIM = PRODUCT_VECTORS.shape[1] # Automatically evaluates to 4
+FEATURE_DIM = PRODUCT_VECTORS.shape[1] # Evaluates cleanly to 4
 
 def get_candidates(user_vector, top_k=3):
     sims = cosine_similarity([user_vector], PRODUCT_VECTORS)[0]
@@ -55,7 +57,7 @@ class Ranker(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# Cache resource ensures the model instance persists across user interactions
+# Cache resource ensures the model layer weights persist across script reruns
 @st.cache_resource
 def init_model(input_dim):
     model = Ranker(input_dim)
@@ -63,7 +65,7 @@ def init_model(input_dim):
         try:
             model.load_state_dict(torch.load("model.pt", map_location=torch.device('cpu')))
         except Exception:
-            pass # Fallback to random weights if file is missing/corrupted
+            pass # Fallback to random weights if file is unreadable
     return model
 
 model = init_model(FEATURE_DIM)
@@ -71,6 +73,7 @@ model = init_model(FEATURE_DIM)
 def rank_products(vectors):
     model.eval() 
     with torch.no_grad():
+        # Clean mapping from float32 numpy arrays directly into the network layers
         scores = model(torch.tensor(vectors).float()).numpy().flatten()
     return scores
 
@@ -78,7 +81,7 @@ def rank_products(vectors):
 # 3. TRAINING ENGINE
 # ==========================================
 def train_model():
-    # Synthetic training data aligned perfectly with the feature dimension
+    # Synthetic training tensors configured to perfectly match the feature space
     X_train = torch.rand((10, FEATURE_DIM))
     y_train = torch.randint(0, 2, (10, 1)).float()
     
@@ -102,24 +105,24 @@ def train_model():
 st.title("🔥 FAANG-Level Recommender System")
 st.markdown("---")
 
-# Generate a consistent fake user vector matching the exact feature shape
+# Generate a consistent session-cached user vector that mirrors the exact feature dimension
 if "user_vector" not in st.session_state:
-    st.session_state.user_vector = np.random.rand(FEATURE_DIM)
+    st.session_state.user_vector = np.random.rand(FEATURE_DIM).astype(np.float32)
 
-# UI Layout split into interactive controls
+# Grid Layout splitting interactions
 col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("💡 Discover Items")
     if st.button("✨ Get Recommendations", use_container_width=True):
-        # Stage 1: Candidate Generation (Filtering via Cosine Similarity)
+        # Stage 1: Candidate Generation (Cosine Similarity Matching)
         candidates, vectors = get_candidates(st.session_state.user_vector)
 
-        # Stage 2: Heavy Ranking (Scoring via PyTorch Neural Network)
+        # Stage 2: Heavy Ranking (PyTorch Neural Network Scoring)
         scores = rank_products(vectors)
         candidates["score"] = scores
         
-        # Sort by high-value NN predictions
+        # Sort and display results
         ranked = candidates.sort_values(by="score", ascending=False)
         
         st.write("### Recommended Items (Ranked):")
@@ -128,8 +131,8 @@ with col1:
 
 with col2:
     st.subheader("⚙️ Model Operations")
-    st.write("Simulate real-time user-feedback training cycles directly on production infrastructure.")
+    st.write("Retrain the neural network in-memory to simulate real-time reinforcement training workflows.")
     if st.button("🔄 Retrain Neural Network", use_container_width=True):
         with st.spinner("Retraining PyTorch Network layers..."):
             train_model()
-        st.success("Model successfully retrained! Updated neural weights are active.")
+        st.success("Model successfully retrained! Updated weights are live.")
