@@ -8,31 +8,29 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-st.set_page_config(page_title="Production Relational AI Agent", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="AI Personal Concierge", page_icon="🛍️", layout="wide")
 
 DB_FILE = "inventory.db"
 CATEGORIES = ["electronics", "footwear", "clothing", "beauty", "home_decor", "fitness", "books", "automotive", "toys", "groceries"]
 FEATURE_DIM = 12
-MAX_GLOBAL_PRICE = 250000.0  # Kept high to ensure premium items don't get clipped out easily
+MAX_GLOBAL_PRICE = 250000.0
 
 if not os.path.exists(DB_FILE):
-    st.error("🚨 Missing 'inventory.db' file! Please run 'python seed_db.py' first to build and populate your 2,000 product rows.")
+    st.error("🚨 Missing 'inventory.db' file! Please run your database creator script first.")
     st.stop()
 
 # ==========================================
-# 1. STRUCTURAL DATA & EMBEDDING PIPELINES
+# 1. MATHEMATICAL DATA & LOOKUP PIPELINES
 # ==========================================
 def build_vectors_from_df(df_subset):
     vectors = []
     for _, row in df_subset.iterrows():
         rating_val = float(row["rating"])
         price_norm = float(row["price"]) / MAX_GLOBAL_PRICE
-        
         cat_array = [0.0] * len(CATEGORIES)
         if row["category"] in CATEGORIES:
             cat_idx = CATEGORIES.index(row["category"])
             cat_array[cat_idx] = 1.0
-            
         vectors.append([rating_val, price_norm] + cat_array)
     return np.array(vectors, dtype=np.float32)
 
@@ -45,14 +43,10 @@ def parse_user_input(category_choice, max_budget, preferred_rating):
     return np.array([preferred_rating, price_norm] + cat_array, dtype=np.float32)
 
 def query_candidates_db(user_vector, category_choice, max_budget, blacklist, search_query=""):
-    """Performs Stage 1 relational lookup with intersection parameters."""
     conn = sqlite3.connect(DB_FILE)
-    
-    # FIX: Base query filters on budget AND category simultaneously to keep search spaces clean
     query = "SELECT id, name, category, price, rating FROM products WHERE price <= ? AND category = ?"
     params = [max_budget, category_choice]
     
-    # FIX: Text search matches contextually alongside filters instead of replacing them
     if search_query.strip():
         query += " AND name LIKE ?"
         params.append(f"%{search_query.strip()}%")
@@ -77,7 +71,7 @@ def query_candidates_db(user_vector, category_choice, max_budget, blacklist, sea
     return df_candidates.iloc[top_indices].copy(), candidate_vectors[top_indices]
 
 # ==========================================
-# 2. PYTORCH CONTINUOUS TRAINING ENGINE
+# 2. SEAMLESS AI OPTIMIZATION BACKEND
 # ==========================================
 class DeepRanker(nn.Module):
     def __init__(self, input_dim):
@@ -96,102 +90,147 @@ if "neural_agent" not in st.session_state:
 
 agent_nn = st.session_state.neural_agent
 
-def dynamic_train_step(features, labels):
-    X = torch.tensor(np.array(features)).float()
-    y = torch.tensor(np.array(labels)).float().unsqueeze(1)
+def instant_backprop_step(feature_vector, target_label):
+    """Fires instantly behind the scenes on button click—no submission needed."""
+    X = torch.tensor(np.array([feature_vector])).float()
+    y = torch.tensor(np.array([[target_label]])).float()
     
     optimizer = optim.Adam(agent_nn.parameters(), lr=0.05)
     loss_fn = nn.BCELoss()
     
     agent_nn.train()
-    for _ in range(15):
+    for _ in range(10):
         predictions = agent_nn(X)
         loss = loss_fn(predictions, y)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-# ==========================================
-# 3. INTERACTIVE RENDERING CANVAS
-# ==========================================
-st.title("🤖 Production Deep Ranking Recommendation Agent")
-st.caption("Active SQL Backend Processing 2,000 Real Items (200 SKUs Per Category)")
+# --- REVIEWS & FEEDBACK STORAGE SYSTEM ---
+if "persistent_reviews" not in st.session_state:
+    st.session_state.persistent_reviews = {}
 
+def get_product_reviews(product_name):
+    # Generates custom sample responses based on keywords or pulls up written submissions
+    if product_name not in st.session_state.persistent_reviews:
+        brand = product_name.split()[0]
+        if brand in ["Apple", "Samsung", "Sony"]:
+            st.session_state.persistent_reviews[product_name] = [
+                {"user": "Arjun R.", "stars": 5, "comment": "Absolutely brilliant choice. Premium build and exceptional performance."},
+                {"user": "Priya S.", "stars": 4, "comment": "Incredibly smooth user interface, but a bit pricey."}
+            ]
+        elif brand in ["Nike", "Adidas", "Puma"]:
+            st.session_state.persistent_reviews[product_name] = [
+                {"user": "Vikram K.", "stars": 5, "comment": "Super lightweight and highly comfortable for running long tracks."},
+                {"user": "Ananya D.", "stars": 3, "comment": "Arch support is fantastic, but fits tighter than standard sizing."}
+            ]
+        else:
+            st.session_state.persistent_reviews[product_name] = [
+                {"user": "Verified Shopper", "stars": 5, "comment": "Highly recommended! Exceeded my expectations entirely."},
+                {"user": "Rohan M.", "stars": 4, "comment": "Good quality and value. Shipped quickly and arrived safely."}
+            ]
+    return st.session_state.persistent_reviews[product_name]
+
+# ==========================================
+# 3. INTERACTIVE CUSTOMER FACE LAYOUT
+# ==========================================
 if "blacklist" not in st.session_state:
     st.session_state.blacklist = set()
 
-if "current_recommendations" not in st.session_state:
-    st.session_state.current_recommendations = None
-
-st.sidebar.header("🎯 Target Context Weights")
-user_cat = st.sidebar.selectbox("Preferred Category", [c.replace("_", " ").title() for c in CATEGORIES], index=0)
+# Sidebar Search Customization Context
+st.sidebar.markdown("### 🔍 Personalize Your Stylist")
+user_cat = st.sidebar.selectbox("Category", [c.replace("_", " ").title() for c in CATEGORIES], index=0)
 selected_category_key = user_cat.lower().replace(" ", "_")
 
-# FIX: Increased maximum default slider range to accommodate high-end luxury items
-user_budget = st.sidebar.slider("Maximum Budget Target (₹)", min_value=100, max_value=250000, value=180000, step=1000)
-user_rating = st.sidebar.slider("Minimum Quality Target", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
+user_budget = st.sidebar.slider("Max Budget Target (₹)", min_value=100, max_value=250000, value=160000, step=1000)
+user_rating = st.sidebar.slider("Minimum Customer Rating", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
 
-search_input = st.text_input(f"🔍 Search within '{user_cat}' (e.g., Leave blank for all, or type a keyword)", value="")
-
-if st.sidebar.button("🧹 Clear Dislike Blacklist"):
+if st.sidebar.button("🧹 Reset Personalization Model", use_container_width=True):
     st.session_state.blacklist.clear()
-    st.session_state.current_recommendations = None
+    if "current_recommendations" in st.session_state:
+        st.session_state.current_recommendations = None
     st.rerun()
 
-if st.button("🧠 Execute Matrix Search & Rank", type="primary", use_container_width=True):
-    u_vector = parse_user_input(selected_category_key, user_budget, user_rating)
-    candidates, vectors = query_candidates_db(u_vector, selected_category_key, user_budget, st.session_state.blacklist, search_query=search_input)
-    
-    if not candidates.empty:
-        agent_nn.eval()
-        with torch.no_grad():
-            scores = agent_nn(torch.tensor(vectors).float()).numpy().flatten()
-        
-        candidates["score"] = scores
-        ranked_output = candidates.sort_values(by="score", ascending=False)
-        st.session_state.current_recommendations = (ranked_output, vectors)
-    else:
-        st.session_state.current_recommendations = "EMPTY"
+# Clean Header Design Structure
+st.title("🛍️ Your Personalized AI Stylist")
+st.write("Browse through our live collection. Your assistant fine-tunes your feed automatically based on your preferences.")
 
-if st.session_state.current_recommendations is not None:
-    if st.session_state.current_recommendations == "EMPTY":
-        st.error(f"❌ No matching items found under '{user_cat}' matching your search string below ₹{user_budget:,}. Try raising your budget slider on the left panel!")
-    else:
-        ranked_df, vectors_used = st.session_state.current_recommendations
-        st.subheader("💡 Retrieved Database Rows & Current Layer Scoring Values")
+search_input = st.text_input(f"What specifically are you shopping for in {user_cat}? (Leave blank to see everything)", value="", placeholder="Type brands, keywords, models...")
+
+# Reactive Computation Layer
+u_vector = parse_user_input(selected_category_key, user_budget, user_rating)
+candidates, vectors = query_candidates_db(u_vector, selected_category_key, user_budget, st.session_state.blacklist, search_query=search_input)
+
+if not candidates.empty:
+    agent_nn.eval()
+    with torch.no_grad():
+        scores = agent_nn(torch.tensor(vectors).float()).numpy().flatten()
+    
+    candidates["score"] = scores
+    ranked_output = candidates.sort_values(by="score", ascending=False)
+    
+    st.markdown("---")
+    st.subheader(f"✨ Curated Top Matches for You in {user_cat}")
+    
+    # Render individual beautiful item catalog cards dynamically
+    for idx, (_, row) in enumerate(ranked_output.iterrows()):
+        item_vector = vectors[idx]
+        match_percentage = int(row['score'] * 100)
         
-        with st.form("feedback_form"):
-            feedback_dict = {}
+        # UI Product Block Card styling container wrapper
+        with st.container():
+            col_details, col_actions = st.columns([2.5, 1], gap="medium")
             
-            for i, (idx, row) in enumerate(ranked_df.iterrows()):
-                col_item, col_feed = st.columns([3, 1])
-                with col_item:
-                    st.info(f"**{row['name']}** [{row['category'].upper()}] \n💰 Price: ₹{row['price']:,} | ⭐ Rating: {row['rating']} | 🕸️ Current Layer Score: `{round(row['score'], 4)}`")
-                with col_feed:
-                    feedback_dict[idx] = st.radio("Feedback Action", ["Select Action", "👍 Like / Buy", "👎 Dislike / Ignore"], key=f"feed_{row['id']}")
-                    
-            submitted = st.form_submit_button("📥 Send Choices to PyTorch Neural Gradients", use_container_width=True)
-            
-            if submitted:
-                training_features = []
-                training_labels = []
+            with col_details:
+                st.markdown(f"### {row['name']}")
                 
-                for i, (idx, row) in enumerate(ranked_df.iterrows()):
-                    action = feedback_dict[idx]
-                    if action != "Select Action":
-                        training_features.append(vectors_used[i])
-                        training_labels.append(1.0 if action == "👍 Like / Buy" else 0.0)
+                # Align key statistics neatly
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Price", f"₹{int(row['price']):,}")
+                m2.metric("Avg Rating", f"⭐ {row['rating']}/5")
+                m3.metric("Tailored Match", f"🔥 {match_percentage}%")
+                
+                # --- INTERACTIVE REVIEW EXTENSION WINDOW ---
+                reviews = get_product_reviews(row['name'])
+                with st.expander(f"💬 Customer Reviews & Feedback ({len(reviews)})"):
+                    for r in reviews:
+                        st.markdown(f"**{r['user']}** {'★' * r['stars']}{'☆' * (5-r['stars'])}")
+                        st.caption(f'"{r["comment"]}"')
+                        st.markdown("<p style='margin:2px;'></p>", unsafe_allow_html=True)
+                    
+                    # Form enabling users to write review items
+                    with st.form(key=f"write_review_{row['id']}", clear_on_submit=True):
+                        st.markdown("**Write a Product Review**")
+                        rev_name = st.text_input("Your Name", value="Guest User", key=f"rn_{row['id']}")
+                        rev_stars = st.slider("Rating Stars", 1, 5, 5, key=f"rs_{row['id']}")
+                        rev_text = st.text_area("Your Review Thoughts", placeholder="Share your experience with this item...", key=f"rt_{row['id']}")
                         
-                        if action == "👎 Dislike / Ignore":
-                            st.session_state.blacklist.add(row['id'])
+                        if st.form_submit_button("Post Anonymous Review"):
+                            if rev_text.strip():
+                                st.session_state.persistent_reviews[row['name']].insert(0, {
+                                    "user": rev_name,
+                                    "stars": rev_stars,
+                                    "comment": rev_text.strip()
+                                })
+                                st.toast("✅ Review posted successfully!")
+                                st.rerun()
             
-                if training_features:
-                    with st.spinner("Updating backpropagation neural vectors..."):
-                        dynamic_train_step(training_features, training_labels)
-                    st.success("🤖 PyTorch network updated! Recommendations optimized based on database selections.")
-                    st.session_state.current_recommendations = None
+            with col_actions:
+                st.write("<p style='margin-top:25px;'></p>", unsafe_allow_html=True)
+                
+                # INTERACTION FUNCTIONALITIES: Automatically fires training backprop instantly when pushed
+                if st.button("👍 Love It", key=f"like_{row['id']}", use_container_width=True):
+                    instant_backprop_step(item_vector, 1.0)
+                    st.toast(f"Loved {row['name']}! Refining your feed...")
                     st.rerun()
-                else:
-                    st.warning("Provide implicit input rankings to run structural weight revisions.")
+                    
+                if st.button("👎 Hide From Feed", key=f"hide_{row['id']}", use_container_width=True):
+                    instant_backprop_step(item_vector, 0.0)
+                    st.session_state.blacklist.add(row['id'])
+                    st.toast(f"Removed {row['name']} from your recommendations.")
+                    st.rerun()
+                    
+        st.markdown("<hr style='border:1px solid #f0f2f6; margin-top:20px; margin-bottom:20px;'>", unsafe_allow_html=True)
 else:
-    st.write("### 👈 Apply search parameters or filter limits to query the SQL stack.")
+    st.markdown("---")
+    st.error(f" We couldn't find any products in '{user_cat}' matching your filter settings. Try raising your budget or clearing your search text query above.")
