@@ -86,12 +86,15 @@ def parse_user_input(category_choice, max_budget, preferred_rating):
 
 def query_candidates_db(user_vector, category_choice, max_budget, blacklist, search_query=""):
     conn = sqlite3.connect(DB_FILE)
+    
+    # Base relational parameters
     query = "SELECT id, name, category, price, rating FROM products WHERE price <= ? AND category = ?"
     params = [max_budget, category_choice]
     
+    # FIX: Explicit lower-case casting ensures searching 'Tv' or 'tv' accurately filters out 'iPhone'
     if search_query.strip():
-        query += " AND name LIKE ?"
-        params.append(f"%{search_query.strip()}%")
+        query += " AND LOWER(name) LIKE ?"
+        params.append(f"%{search_query.strip().lower()}%")
         
     if blacklist:
         placeholders = ",".join("?" for _ in blacklist)
@@ -107,11 +110,11 @@ def query_candidates_db(user_vector, category_choice, max_budget, blacklist, sea
     candidate_vectors = build_vectors_from_df(df_candidates)
     sims = cosine_similarity([user_vector], candidate_vectors)[0]
     
+    # Present the closest matches within the filtered subset
     actual_k = min(3, len(df_candidates))
     top_indices = np.argsort(sims)[-actual_k:]
     
     return df_candidates.iloc[top_indices].copy(), candidate_vectors[top_indices]
-
 # ==========================================
 # 2. NEURAL NETWORK LEARNING PIPELINE
 # ==========================================
