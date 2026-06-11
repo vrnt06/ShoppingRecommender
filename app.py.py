@@ -7,12 +7,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# Set page configuration
-st.set_page_config(page_title="FAANG Recommender", page_icon="🔥", layout="wide")
+st.set_page_config(page_title="AI Recommendation Agent", page_icon="🤖", layout="wide")
 
 # ==========================================
-# 1. DATA & CANDIDATE GENERATION
+# 1. KNOWLEDGE BASE & EMBEDDING PIPELINE
 # ==========================================
+# High-dimensional catalog
 products = pd.DataFrame([
     [1, "iPhone 13", "electronics", 60000, 4.7],
     [2, "Samsung S21", "electronics", 50000, 4.5],
@@ -23,116 +23,97 @@ products = pd.DataFrame([
 
 def build_vectors():
     df = products.copy()
-    # Normalize price
     df["price_norm"] = df["price"] / df["price"].max()
-    
-    # FIX: Explicitly set dtype=int to prevent boolean (True/False) generation
     df = pd.get_dummies(df, columns=["category"], dtype=int)
-    
-    # FIX: Force cast the entire numpy matrix to float32 to prevent object_ type issues in PyTorch
+    # Target Features: [rating, price_norm, cat_electronics, cat_footwear]
     return df.drop(["id", "name", "price"], axis=1).values.astype(np.float32)
 
-# Derive feature dimensions dynamically to keep system matrices perfectly aligned
 PRODUCT_VECTORS = build_vectors()
-FEATURE_DIM = PRODUCT_VECTORS.shape[1] # Evaluates cleanly to 4
+FEATURE_DIM = PRODUCT_VECTORS.shape[1]  # 4
+
+def parse_user_input(category_choice, max_budget, preferred_rating):
+    """
+    Agent Input Parser: Converts structured user requirements 
+    into a mathematically aligned feature vector.
+    """
+    price_norm = max_budget / products["price"].max()
+    cat_electronics = 1 if category_choice == "electronics" else 0
+    cat_footwear = 1 if category_choice == "footwear" else 0
+    
+    # Matches [rating, price_norm, cat_electronics, cat_footwear]
+    return np.array([preferred_rating, price_norm, cat_electronics, cat_footwear], dtype=np.float32)
 
 def get_candidates(user_vector, top_k=3):
+    """Stage 1: Vector Space Filtering"""
     sims = cosine_similarity([user_vector], PRODUCT_VECTORS)[0]
     idx = np.argsort(sims)[-top_k:]
     return products.iloc[idx].copy(), PRODUCT_VECTORS[idx]
 
 # ==========================================
-# 2. RANKING MODEL (NEURAL NETWORK)
+# 2. THE DEEP RANKING AGENT (PyTorch)
 # ==========================================
-class Ranker(nn.Module):
+class DeepRanker(nn.Module):
     def __init__(self, input_dim):
         super().__init__()
-        self.model = nn.Sequential(
-            nn.Linear(input_dim, 16),
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, 32),
+            nn.ReLU(),
+            nn.Linear(32, 16),
             nn.ReLU(),
             nn.Linear(16, 1),
             nn.Sigmoid()
         )
 
     def forward(self, x):
-        return self.model(x)
+        return self.network(x)
 
-# Cache resource ensures the model layer weights persist across script reruns
 @st.cache_resource
-def init_model(input_dim):
-    model = Ranker(input_dim)
-    if os.path.exists("model.pt"):
+def load_agent(input_dim):
+    agent = DeepRanker(input_dim)
+    if os.path.exists("agent_weights.pt"):
         try:
-            model.load_state_dict(torch.load("model.pt", map_location=torch.device('cpu')))
-        except Exception:
-            pass # Fallback to random weights if file is unreadable
-    return model
+            agent.load_state_dict(torch.load("agent_weights.pt", map_location=torch.device('cpu')))
+        except:
+            pass
+    return agent
 
-model = init_model(FEATURE_DIM)
-
-def rank_products(vectors):
-    model.eval() 
-    with torch.no_grad():
-        # Clean mapping from float32 numpy arrays directly into the network layers
-        scores = model(torch.tensor(vectors).float()).numpy().flatten()
-    return scores
+agent_nn = load_agent(FEATURE_DIM)
 
 # ==========================================
-# 3. TRAINING ENGINE
+# 3. LIVE ON-THE-FLY LEARNING ENGINE
 # ==========================================
-def train_model():
-    # Synthetic training tensors configured to perfectly match the feature space
-    X_train = torch.rand((10, FEATURE_DIM))
-    y_train = torch.randint(0, 2, (10, 1)).float()
+def dynamic_train_step(features, labels):
+    """
+    Performs real-time backpropagation based on active user metrics.
+    Optimizes weights on live production feedback instantly.
+    """
+    X = torch.tensor(np.array(features)).float()
+    y = torch.tensor(np.array(labels)).float().unsqueeze(1)
     
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(agent_nn.parameters(), lr=0.05) # Aggressive learning rate for immediate feedback loop
     loss_fn = nn.BCELoss()
-
-    model.train()
-    for epoch in range(50):
-        pred = model(X_train)
-        loss = loss_fn(pred, y_train)
-
+    
+    agent_nn.train()
+    for _ in range(20):  # Quick optimization cycle
+        predictions = agent_nn(X)
+        loss = loss_fn(predictions, y)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-    torch.save(model.state_dict(), "model.pt")
+        
+    torch.save(agent_nn.state_dict(), "agent_weights.pt")
 
 # ==========================================
-# 4. STREAMLIT UI
+# 4. AGENT STREAMLIT INTERFACE
 # ==========================================
-st.title("🔥 FAANG-Level Recommender System")
-st.markdown("---")
+st.title("🤖 Self-Learning AI Recommendation Agent")
+st.caption("Two-Stage Candidate Generation Engine powered by interactive feedback loops.")
 
-# Generate a consistent session-cached user vector that mirrors the exact feature dimension
-if "user_vector" not in st.session_state:
-    st.session_state.user_vector = np.random.rand(FEATURE_DIM).astype(np.float32)
+# Session Memory to track user actions
+if "interaction_history" not in st.session_state:
+    st.session_state.interaction_history = []
+if "current_recommendations" not in st.session_state:
+    st.session_state.current_recommendations = None
 
-# Grid Layout splitting interactions
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("💡 Discover Items")
-    if st.button("✨ Get Recommendations", use_container_width=True):
-        # Stage 1: Candidate Generation (Cosine Similarity Matching)
-        candidates, vectors = get_candidates(st.session_state.user_vector)
-
-        # Stage 2: Heavy Ranking (PyTorch Neural Network Scoring)
-        scores = rank_products(vectors)
-        candidates["score"] = scores
-        
-        # Sort and display results
-        ranked = candidates.sort_values(by="score", ascending=False)
-        
-        st.write("### Recommended Items (Ranked):")
-        for _, row in ranked.iterrows():
-            st.info(f"**{row['name']}** \n\n 💰 Price: ₹{row['price']} | ⭐ Rating: {row['rating']} \n\n 🎯 Pipeline Score: `{round(row['score'], 4)}`")
-
-with col2:
-    st.subheader("⚙️ Model Operations")
-    st.write("Retrain the neural network in-memory to simulate real-time reinforcement training workflows.")
-    if st.button("🔄 Retrain Neural Network", use_container_width=True):
-        with st.spinner("Retraining PyTorch Network layers..."):
-            train_model()
-        st.success("Model successfully retrained! Updated weights are live.")
+# Sidebar Controls for User Profiles
+st.sidebar.header("🎯 Set
