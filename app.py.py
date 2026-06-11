@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -7,56 +8,75 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-st.set_page_config(page_title="AI Agent (Zero-Cache Mode)", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Enterprise DB AI Agent", page_icon="💾", layout="wide")
+
+DB_FILE = "inventory.db"
+CATEGORIES = ["electronics", "footwear", "clothing", "beauty", "home_decor", "fitness", "books", "automotive", "toys", "groceries"]
+FEATURE_DIM = 12  # Structure: [rating, price_norm, 10 category one-hot flags]
+MAX_GLOBAL_PRICE = 150000.0  # Normalized pricing ceiling anchor
 
 # ==========================================
-# 1. LIGHTWEIGHT IN-MEMORY REGISTRY
+# 1. DATABASE INITIALIZATION & SEEDING
 # ==========================================
-CATEGORIES = [
-    "electronics", "footwear", "clothing", "beauty", "home_decor",
-    "fitness", "books", "automotive", "toys", "groceries"
-]
-
-category_archetypes = {
-    "electronics": {"prefixes": ["Pro", "Ultra", "Max"], "names": ["Laptop", "Smartphone", "Headphones", "Monitor"], "min_p": 1500, "max_p": 95000},
-    "footwear": {"prefixes": ["Air", "Gel", "Zoom"], "names": ["Runners", "Sneakers", "Formals", "Boots"], "min_p": 800, "max_p": 18000},
-    "clothing": {"prefixes": ["Urban", "Slim Fit", "Oversized"], "names": ["Hoodie", "Jacket", "T-Shirt", "Chinos"], "min_p": 500, "max_p": 12000},
-    "beauty": {"prefixes": ["Hydra", "Glow", "Matte"], "names": ["Serum", "Moisturizer", "Lipstick", "Sunscreen"], "min_p": 250, "max_p": 6000},
-    "home_decor": {"prefixes": ["Nordic", "Boho", "Minimalist"], "names": ["Vase", "Wall Clock", "Desk Lamp", "Rug"], "min_p": 350, "max_p": 15000},
-    "fitness": {"prefixes": ["Hex", "Pro", "Heavy Duty"], "names": ["Dumbbell Set", "Yoga Mat", "Resistance Bands", "Kettlebell"], "min_p": 300, "max_p": 8000},
-    "books": {"prefixes": ["The Art of", "Mastering", "History of"], "names": ["Deep Learning", "Data Structures", "Quantum Physics", "Financial Freedom"], "min_p": 200, "max_p": 4500},
-    "automotive": {"prefixes": ["DriveX", "Turbo", "HD"], "names": ["Dash Cam", "Car Vacuum", "Ceramic Coating", "Phone Mount"], "min_p": 150, "max_p": 9000},
-    "toys": {"prefixes": ["Galactic", "Speed", "Classic"], "names": ["Building Blocks", "RC Car", "3x3 Puzzle Cube", "Board Game"], "min_p": 190, "max_p": 12000},
-    "groceries": {"prefixes": ["Organic", "Pure", "Raw"], "names": ["Coffee Beans", "Green Tea", "Olive Oil", "Almond Butter"], "min_p": 100, "max_p": 2500}
-}
-
-# No @st.cache_data decoration here -> Prevents silent disk serialization crashes
-def build_live_catalog():
-    raw_data = []
-    product_id = 1
-    rng = np.random.default_rng(seed=42)
+def init_db():
+    """Establishes connections and initializes relational schema constraints."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
     
-    for category in CATEGORIES:
-        arch = category_archetypes[category]
-        # Generating 200 items per category smoothly straight into memory
-        for _ in range(200):
-            pfx = rng.choice(arch["prefixes"])
-            nm = rng.choice(arch["names"])
-            full_name = f"{pfx} {nm}"
-            price = int(rng.uniform(arch["min_p"], arch["max_p"]))
-            rating = round(float(rng.normal(loc=4.3, scale=0.25)), 1)
-            rating = max(1.0, min(5.0, rating))
-            
-            raw_data.append([product_id, full_name, category, price, rating])
-            product_id += 1
-            
-    return pd.DataFrame(raw_data, columns=["id", "name", "category", "price", "rating"])
+    # Create production schema
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            price REAL NOT NULL,
+            rating REAL NOT NULL
+        )
+    """)
+    
+    # Check if table contains data; seed with real sample records if empty
+    cursor.execute("SELECT COUNT(*) FROM products")
+    if cursor.fetchone()[0] == 0:
+        initial_inventory = [
+            # Electronics
+            ("iPhone 15 Pro", "electronics", 129900, 4.8),
+            ("MacBook Air M3", "electronics", 114900, 4.7),
+            ("Sony WH-1000XM5 Headphones", "electronics", 29990, 4.6),
+            ("iPad Air", "electronics", 59900, 4.5),
+            ("Dell UltraSharp 27 Monitor", "electronics", 34500, 4.4),
+            ("Logitech MX Master 3S Mouse", "electronics", 9495, 4.7),
+            # Footwear
+            ("Nike Air Max Alpha", "footwear", 7995, 4.3),
+            ("Adidas Ultraboost Light", "footwear", 17999, 4.6),
+            ("Puma Velocity Nitro", "footwear", 11999, 4.4),
+            ("Asics Gel-Kayano 30", "footwear", 15999, 4.8),
+            # Clothing
+            ("Levi's 511 Slim Fit Jeans", "clothing", 4199, 4.2),
+            ("Patagonia Torrentshell Jacket", "clothing", 14999, 4.7),
+            ("North Face Nuptse Down Jacket", "clothing", 27999, 4.8),
+            # Books
+            ("Designing Data-Intensive Applications", "books", 1850, 4.9),
+            ("Deep Learning by Goodfellow", "books", 4200, 4.7),
+            ("Atomic Habits", "books", 550, 4.8)
+        ]
+        
+        # Insert seed data block
+        cursor.executemany("""
+            INSERT INTO products (name, category, price, rating) 
+            VALUES (?, ?, ?, ?)
+        """, initial_inventory)
+        conn.commit()
+        
+    conn.close()
 
-products = build_live_catalog()
-MAX_GLOBAL_PRICE = 95000.0  # Set as static scalar value
-FEATURE_DIM = 12
+# Run database setup verification
+init_db()
 
-def build_vectors_fixed(df_subset):
+# ==========================================
+# 2. MATRIX EMBEDDING & VECTOR ENGINES
+# ==========================================
+def build_vectors_from_df(df_subset):
+    """Transforms raw database frames into structured floating-point vector tensors."""
     vectors = []
     for _, row in df_subset.iterrows():
         rating_val = float(row["rating"])
@@ -78,52 +98,59 @@ def parse_user_input(category_choice, max_budget, preferred_rating):
         cat_array[cat_idx] = 1.0
     return np.array([preferred_rating, price_norm] + cat_array, dtype=np.float32)
 
-def get_candidates(user_vector, category_choice, max_budget, blacklist, search_query=""):
-    query_str = str(search_query).strip()
+def query_candidates_db(user_vector, category_choice, max_budget, blacklist, search_query=""):
+    """Stage 1: SQL Execution Layer (Handles hard budget constraints at database layer)"""
+    conn = sqlite3.connect(DB_FILE)
     
-    if query_str:
-        filter_mask = (
-            (products["name"].astype(str).str.contains(query_str, case=False, na=False)) &
-            (products["price"] <= max_budget) &
-            (~products["id"].isin(blacklist))
-        )
+    # Base SQL structural assignment
+    query = "SELECT id, name, category, price, rating FROM products WHERE price <= ?"
+    params = [max_budget]
+    
+    # Append textual keyword filter conditions dynamically
+    if search_query.strip():
+        query += " AND name LIKE ?"
+        params.append(f"%{search_query.strip()}%")
     else:
-        filter_mask = (
-            (products["category"] == category_choice) & 
-            (products["price"] <= max_budget) & 
-            (~products["id"].isin(blacklist))
-        )
+        query += " AND category = ?"
+        params.append(category_choice)
         
-    filtered_products = products[filter_mask].copy()
-    if filtered_products.empty:
-        return filtered_products, np.empty((0, FEATURE_DIM), dtype=np.float32)
+    # Append dynamic session exclusions
+    if blacklist:
+        placeholders = ",".join("?" for _ in blacklist)
+        query += f" AND id NOT IN ({placeholders})"
+        params.extend(list(blacklist))
+        
+    df_candidates = pd.read_sql_query(query, conn, params=params)
+    conn.close()
     
-    filtered_vectors = build_vectors_fixed(filtered_products)
-    sims = cosine_similarity([user_vector], filtered_vectors)[0]
+    if df_candidates.empty:
+        return df_candidates, np.empty((0, FEATURE_DIM), dtype=np.float32)
     
-    # 🌟 Performance improvement: Displaying top 2 items keeps the web canvas lightning fast
-    actual_k = min(2, len(filtered_products))
-    idx = np.argsort(sims)[-actual_k:]
+    # Process relative mathematical distance vectors
+    candidate_vectors = build_vectors_from_df(df_candidates)
+    sims = cosine_similarity([user_vector], candidate_vectors)[0]
     
-    return filtered_products.iloc[idx].copy(), filtered_vectors[idx]
+    # Sort closest contextual vector arrays
+    actual_k = min(3, len(df_candidates))
+    top_indices = np.argsort(sims)[-actual_k:]
+    
+    return df_candidates.iloc[top_indices].copy(), candidate_vectors[top_indices]
 
 # ==========================================
-# 2. THE DEEP RANKING AGENT (PyTorch)
+# 3. PYTORCH DEEP RANKING PIPELINE
 # ==========================================
 class DeepRanker(nn.Module):
     def __init__(self, input_dim):
         super().__init__()
         self.network = nn.Sequential(
-            nn.Linear(input_dim, 32), # Sized down layers slightly to minimize memory footprint
+            nn.Linear(input_dim, 32),
             nn.ReLU(),
             nn.Linear(32, 1),
             nn.Sigmoid()
         )
-
     def forward(self, x):
         return self.network(x)
 
-# Avoid disk caching here as well to protect restricted cloud sandbox sessions
 if "neural_agent" not in st.session_state:
     st.session_state.neural_agent = DeepRanker(FEATURE_DIM)
 
@@ -145,10 +172,10 @@ def dynamic_train_step(features, labels):
         optimizer.step()
 
 # ==========================================
-# 3. LIGHT RESILIENT USER INTERFACE
+# 4. STREAMLIT ENTERPRISE INTERFACE
 # ==========================================
-st.title("🤖 Self-Learning AI Recommendation Agent")
-st.caption("Active Zero-Cache Engine Processing 2,000 SKUs Safely In-Memory.")
+st.title("💾 Database-Driven AI Recommendation Agent")
+st.caption("Production Pipeline Connected to Local SQLite Engine with In-Memory Neural Topologies.")
 
 if "blacklist" not in st.session_state:
     st.session_state.blacklist = set()
@@ -156,23 +183,25 @@ if "blacklist" not in st.session_state:
 if "current_recommendations" not in st.session_state:
     st.session_state.current_recommendations = None
 
-search_input = st.text_input("🔍 Search for a specific product keyword (e.g., 'iPhone', 'Laptop', 'Runners')", value="")
+# Search input engine trigger
+search_input = st.text_input("🔍 Search Inventory Database (e.g., 'iPhone', 'Nike', 'MacBook')", value="")
 
-st.sidebar.header("🎯 Set Your Agent Preferences")
+st.sidebar.header("🎯 Context Filters")
 user_cat = st.sidebar.selectbox("Fallback Category", [c.replace("_", " ").title() for c in CATEGORIES])
 selected_category_key = user_cat.lower().replace(" ", "_")
 
-user_budget = st.sidebar.slider("Maximum Budget (₹)", min_value=100, max_value=100000, value=50000, step=1000)
-user_rating = st.sidebar.slider("Minimum Desired Rating", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
+user_budget = st.sidebar.slider("Maximum Budget Cap (₹)", min_value=500, max_value=150000, value=75000, step=500)
+user_rating = st.sidebar.slider("Minimum Quality Metric", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
 
 if st.sidebar.button("🧹 Clear Dislike Blacklist"):
     st.session_state.blacklist.clear()
     st.session_state.current_recommendations = None
     st.rerun()
 
+# Processing Loop Block execution
 if st.button("🧠 Search & Compute Next Best Action", type="primary", use_container_width=True):
     u_vector = parse_user_input(selected_category_key, user_budget, user_rating)
-    candidates, vectors = get_candidates(u_vector, selected_category_key, user_budget, st.session_state.blacklist, search_query=search_input)
+    candidates, vectors = query_candidates_db(u_vector, selected_category_key, user_budget, st.session_state.blacklist, search_query=search_input)
     
     if not candidates.empty:
         agent_nn.eval()
@@ -185,12 +214,13 @@ if st.button("🧠 Search & Compute Next Best Action", type="primary", use_conta
     else:
         st.session_state.current_recommendations = "EMPTY"
 
+# Output rendering form engine
 if st.session_state.current_recommendations is not None:
     if st.session_state.current_recommendations == "EMPTY":
-        st.error("❌ No matching products found. Try adjusting your keyword or increasing budget limits.")
+        st.error("❌ No matching rows discovered in SQLite table. Try widening the scope parameters or budget levels.")
     else:
         ranked_df, vectors_used = st.session_state.current_recommendations
-        st.subheader("💡 Matching Results & Neural Ranking")
+        st.subheader("💡 Database Query Results & Neural Ranking Scores")
         
         with st.form("feedback_form"):
             feedback_dict = {}
@@ -198,7 +228,7 @@ if st.session_state.current_recommendations is not None:
             for i, (idx, row) in enumerate(ranked_df.iterrows()):
                 col_item, col_feed = st.columns([3, 1])
                 with col_item:
-                    st.info(f"**{row['name']}** ({row['category'].upper()}) \n💰 Price: ₹{row['price']:,} | ⭐ Rating: {row['rating']} | 🕸️ Current Layer Score: `{round(row['score'], 4)}`")
+                    st.info(f"**{row['name']}** [{row['category'].upper()}] \n💰 Price: ₹{row['price']:,} | ⭐ Rating: {row['rating']} | 🕸️ Current Layer Score: `{round(row['score'], 4)}`")
                 with col_feed:
                     feedback_dict[idx] = st.radio("Feedback", ["Select Action", "👍 Like / Buy", "👎 Dislike / Ignore"], key=f"feed_{row['id']}")
                     
@@ -218,12 +248,12 @@ if st.session_state.current_recommendations is not None:
                             st.session_state.blacklist.add(row['id'])
             
                 if training_features:
-                    with st.spinner("Executing backpropagation layers..."):
+                    with st.spinner("Executing neural learning backpropagation..."):
                         dynamic_train_step(training_features, training_labels)
-                    st.success("🤖 Optimization Complete!")
+                    st.success("🤖 Optimization Complete! System weights adjusted based on database evaluations.")
                     st.session_state.current_recommendations = None
                     st.rerun()
                 else:
-                    st.warning("Please provide feedback on at least one item to trigger training.")
+                    st.warning("Provide evaluation metrics to activate backpropagation optimization cycles.")
 else:
-    st.write("### 👈 Enter a search keyword or change preference configurations to query the AI agent pipeline.")
+    st.write("### 👈 Query your persistent SQLite tables by filling out search inputs.")
