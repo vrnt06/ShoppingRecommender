@@ -12,7 +12,6 @@ st.set_page_config(page_title="AI Recommendation Agent", page_icon="🤖", layou
 # ==========================================
 # 1. KNOWLEDGE BASE & EMBEDDING PIPELINE
 # ==========================================
-# High-dimensional catalog
 products = pd.DataFrame([
     [1, "iPhone 13", "electronics", 60000, 4.7],
     [2, "Samsung S21", "electronics", 50000, 4.5],
@@ -25,26 +24,18 @@ def build_vectors():
     df = products.copy()
     df["price_norm"] = df["price"] / df["price"].max()
     df = pd.get_dummies(df, columns=["category"], dtype=int)
-    # Target Features: [rating, price_norm, cat_electronics, cat_footwear]
     return df.drop(["id", "name", "price"], axis=1).values.astype(np.float32)
 
 PRODUCT_VECTORS = build_vectors()
 FEATURE_DIM = PRODUCT_VECTORS.shape[1]  # 4
 
 def parse_user_input(category_choice, max_budget, preferred_rating):
-    """
-    Agent Input Parser: Converts structured user requirements 
-    into a mathematically aligned feature vector.
-    """
     price_norm = max_budget / products["price"].max()
     cat_electronics = 1 if category_choice == "electronics" else 0
     cat_footwear = 1 if category_choice == "footwear" else 0
-    
-    # Matches [rating, price_norm, cat_electronics, cat_footwear]
     return np.array([preferred_rating, price_norm, cat_electronics, cat_footwear], dtype=np.float32)
 
 def get_candidates(user_vector, top_k=3):
-    """Stage 1: Vector Space Filtering"""
     sims = cosine_similarity([user_vector], PRODUCT_VECTORS)[0]
     idx = np.argsort(sims)[-top_k:]
     return products.iloc[idx].copy(), PRODUCT_VECTORS[idx]
@@ -83,18 +74,14 @@ agent_nn = load_agent(FEATURE_DIM)
 # 3. LIVE ON-THE-FLY LEARNING ENGINE
 # ==========================================
 def dynamic_train_step(features, labels):
-    """
-    Performs real-time backpropagation based on active user metrics.
-    Optimizes weights on live production feedback instantly.
-    """
     X = torch.tensor(np.array(features)).float()
     y = torch.tensor(np.array(labels)).float().unsqueeze(1)
     
-    optimizer = optim.Adam(agent_nn.parameters(), lr=0.05) # Aggressive learning rate for immediate feedback loop
+    optimizer = optim.Adam(agent_nn.parameters(), lr=0.05)
     loss_fn = nn.BCELoss()
     
     agent_nn.train()
-    for _ in range(20):  # Quick optimization cycle
+    for _ in range(20):
         predictions = agent_nn(X)
         loss = loss_fn(predictions, y)
         optimizer.zero_grad()
@@ -109,44 +96,34 @@ def dynamic_train_step(features, labels):
 st.title("🤖 Self-Learning AI Recommendation Agent")
 st.caption("Two-Stage Candidate Generation Engine powered by interactive feedback loops.")
 
-# Session Memory to track user actions
 if "interaction_history" not in st.session_state:
     st.session_state.interaction_history = []
 if "current_recommendations" not in st.session_state:
     st.session_state.current_recommendations = None
 
-# Sidebar Controls for User Profiles
 st.sidebar.header("🎯 Set Your Agent Preferences")
 user_cat = st.sidebar.selectbox("Preferred Category", ["electronics", "footwear"])
 user_budget = st.sidebar.slider("Maximum Budget (₹)", min_value=5000, max_value=100000, value=50000, step=5000)
 user_rating = st.sidebar.slider("Minimum Desired Rating", min_value=1.0, max_value=5.0, value=4.5, step=0.1)
 
 if st.sidebar.button("🧠 Compute Next Best Action", use_container_width=True):
-    # Step 1: Parse Input to Vector Space
     u_vector = parse_user_input(user_cat, user_budget, user_rating)
-    
-    # Step 2: Retrieve Candidates via Cosine Similarity
     candidates, vectors = get_candidates(u_vector)
     
-    # Step 3: Run Inference through the Neural Network
     agent_nn.eval()
     with torch.no_grad():
         scores = agent_nn(torch.tensor(vectors).float()).numpy().flatten()
     
     candidates["score"] = scores
     ranked_output = candidates.sort_values(by="score", ascending=False)
-    
-    # Store state for user reinforcement feedback
     st.session_state.current_recommendations = (ranked_output, vectors)
 
-# Main UI Display Area
 if st.session_state.current_recommendations is not None:
     ranked_df, vectors_used = st.session_state.current_recommendations
     
     st.subheader("💡 Agent Recommendations")
     st.write("Review the items below and provide implicit feedback to train the agent's internal network layers.")
     
-    # Track actions inside a dynamic form
     with st.form("feedback_form"):
         feedback_dict = {}
         
@@ -155,16 +132,15 @@ if st.session_state.current_recommendations is not None:
             with col_item:
                 st.info(f"**{row['name']}** ({row['category'].upper()})  \n💰 Price: ₹{row['price']} | ⭐ Rating: {row['rating']} | 🕸️ Current Layer Score: `{round(row['score'], 4)}`")
             with col_feed:
-                # User training inputs
                 feedback_dict[idx] = st.radio("Feedback", ["Select Action", "👍 Like / Buy", "👎 Dislike / Ignore"], key=f"feed_{row['id']}")
                 
-        submitted = st.form_submit_with_warm_start("📥 Process Feedback & Train Neural Layers", use_container_width=True)
+        # 🌟 FIXED LINE HERE 🌟
+        submitted = st.form_submit_button("📥 Process Feedback & Train Neural Layers", use_container_width=True)
         
         if submitted:
             training_features = []
             training_labels = []
             
-            # Map user actions directly to mathematical labels (1.0 or 0.0)
             for i, (idx, row) in enumerate(ranked_df.iterrows()):
                 action = feedback_dict[idx]
                 if action != "Select Action":
@@ -175,14 +151,13 @@ if st.session_state.current_recommendations is not None:
                 with st.spinner("Executing backpropagation layers..."):
                     dynamic_train_step(training_features, training_labels)
                 st.success("🤖 Optimization Complete! Neural weights updated directly from your decisions.")
-                st.session_state.current_recommendations = None  # Reset to update views on next action run
+                st.session_state.current_recommendations = None
                 st.rerun()
             else:
                 st.warning("Please provide feedback on at least one item to trigger training.")
 else:
     st.write("### 👈 Adjust preferences on the sidebar and click **Compute Next Best Action** to initiate the pipeline.")
 
-# Metrics / Observability Dashboard
 st.markdown("---")
 st.subheader("📊 System Architecture Diagnostics")
 col_stat1, col_stat2 = st.columns(2)
