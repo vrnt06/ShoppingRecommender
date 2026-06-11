@@ -8,7 +8,49 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-st.set_page_config(page_title="AI Personal Concierge", page_icon="🛍️", layout="wide")
+# Apply a premium style and layout config
+st.set_page_config(page_title="AURORA // Premium AI Concierge", page_icon="⚡", layout="wide")
+
+# Custom CSS injection for a minimalist Nordic styling theme
+st.markdown("""
+    <style>
+    /* Global Background and typography adjustments */
+    .stApp {
+        background-color: #0d1117;
+        color: #e6edf3;
+    }
+    /* Clean Product Container styling Cards */
+    .product-card {
+        background: linear-gradient(145deg, #161b22, #0f141c);
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .product-card:hover {
+        border-color: #58a6ff;
+    }
+    /* Brand Accent headers */
+    .brand-title {
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: #f0f6fc;
+    }
+    /* Match Pill Style */
+    .match-pill {
+        background-color: rgba(56, 139, 253, 0.15);
+        color: #58a6ff;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-block;
+        border: 1px solid rgba(56, 139, 253, 0.3);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 DB_FILE = "inventory.db"
 CATEGORIES = ["electronics", "footwear", "clothing", "beauty", "home_decor", "fitness", "books", "automotive", "toys", "groceries"]
@@ -16,11 +58,11 @@ FEATURE_DIM = 12
 MAX_GLOBAL_PRICE = 250000.0
 
 if not os.path.exists(DB_FILE):
-    st.error("🚨 Missing 'inventory.db' file! Please run your database creator script first.")
+    st.error("🚨 Core inventory missing. Please run seed_db.py to generate your database items.")
     st.stop()
 
 # ==========================================
-# 1. MATHEMATICAL DATA & LOOKUP PIPELINES
+# 1. CORE SEARCH & EMBEDDING ENGINES
 # ==========================================
 def build_vectors_from_df(df_subset):
     vectors = []
@@ -71,7 +113,7 @@ def query_candidates_db(user_vector, category_choice, max_budget, blacklist, sea
     return df_candidates.iloc[top_indices].copy(), candidate_vectors[top_indices]
 
 # ==========================================
-# 2. SEAMLESS AI OPTIMIZATION BACKEND
+# 2. NEURAL NETWORK LEARNING PIPELINE
 # ==========================================
 class DeepRanker(nn.Module):
     def __init__(self, input_dim):
@@ -91,7 +133,6 @@ if "neural_agent" not in st.session_state:
 agent_nn = st.session_state.neural_agent
 
 def instant_backprop_step(feature_vector, target_label):
-    """Fires instantly behind the scenes on button click—no submission needed."""
     X = torch.tensor(np.array([feature_vector])).float()
     y = torch.tensor(np.array([[target_label]])).float()
     
@@ -99,138 +140,31 @@ def instant_backprop_step(feature_vector, target_label):
     loss_fn = nn.BCELoss()
     
     agent_nn.train()
-    for _ in range(10):
+    for _ in range(12):
         predictions = agent_nn(X)
         loss = loss_fn(predictions, y)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-# --- REVIEWS & FEEDBACK STORAGE SYSTEM ---
+# --- INSTANT PERSISTENT REVIEWS CONTROLLER ---
 if "persistent_reviews" not in st.session_state:
     st.session_state.persistent_reviews = {}
 
 def get_product_reviews(product_name):
-    # Generates custom sample responses based on keywords or pulls up written submissions
     if product_name not in st.session_state.persistent_reviews:
-        brand = product_name.split()[0]
-        if brand in ["Apple", "Samsung", "Sony"]:
-            st.session_state.persistent_reviews[product_name] = [
-                {"user": "Arjun R.", "stars": 5, "comment": "Absolutely brilliant choice. Premium build and exceptional performance."},
-                {"user": "Priya S.", "stars": 4, "comment": "Incredibly smooth user interface, but a bit pricey."}
-            ]
-        elif brand in ["Nike", "Adidas", "Puma"]:
-            st.session_state.persistent_reviews[product_name] = [
-                {"user": "Vikram K.", "stars": 5, "comment": "Super lightweight and highly comfortable for running long tracks."},
-                {"user": "Ananya D.", "stars": 3, "comment": "Arch support is fantastic, but fits tighter than standard sizing."}
-            ]
-        else:
-            st.session_state.persistent_reviews[product_name] = [
-                {"user": "Verified Shopper", "stars": 5, "comment": "Highly recommended! Exceeded my expectations entirely."},
-                {"user": "Rohan M.", "stars": 4, "comment": "Good quality and value. Shipped quickly and arrived safely."}
-            ]
+        st.session_state.persistent_reviews[product_name] = [
+            {"user": "Alex M.", "stars": 5, "comment": "Excellent craftsmanship. Exceeded expectations."},
+            {"user": "S. Taylor", "stars": 4, "comment": "Solid everyday design, sleek minimalist appearance."}
+        ]
     return st.session_state.persistent_reviews[product_name]
 
 # ==========================================
-# 3. INTERACTIVE CUSTOMER FACE LAYOUT
+# 3. LUXURY NORDIC CUSTOMER INTERFACE
 # ==========================================
 if "blacklist" not in st.session_state:
     st.session_state.blacklist = set()
 
-# Sidebar Search Customization Context
-st.sidebar.markdown("### 🔍 Personalize Your Stylist")
-user_cat = st.sidebar.selectbox("Category", [c.replace("_", " ").title() for c in CATEGORIES], index=0)
-selected_category_key = user_cat.lower().replace(" ", "_")
-
-user_budget = st.sidebar.slider("Max Budget Target (₹)", min_value=100, max_value=250000, value=160000, step=1000)
-user_rating = st.sidebar.slider("Minimum Customer Rating", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
-
-if st.sidebar.button("🧹 Reset Personalization Model", use_container_width=True):
-    st.session_state.blacklist.clear()
-    if "current_recommendations" in st.session_state:
-        st.session_state.current_recommendations = None
-    st.rerun()
-
-# Clean Header Design Structure
-st.title("🛍️ Your Personalized AI Stylist")
-st.write("Browse through our live collection. Your assistant fine-tunes your feed automatically based on your preferences.")
-
-search_input = st.text_input(f"What specifically are you shopping for in {user_cat}? (Leave blank to see everything)", value="", placeholder="Type brands, keywords, models...")
-
-# Reactive Computation Layer
-u_vector = parse_user_input(selected_category_key, user_budget, user_rating)
-candidates, vectors = query_candidates_db(u_vector, selected_category_key, user_budget, st.session_state.blacklist, search_query=search_input)
-
-if not candidates.empty:
-    agent_nn.eval()
-    with torch.no_grad():
-        scores = agent_nn(torch.tensor(vectors).float()).numpy().flatten()
-    
-    candidates["score"] = scores
-    ranked_output = candidates.sort_values(by="score", ascending=False)
-    
-    st.markdown("---")
-    st.subheader(f"✨ Curated Top Matches for You in {user_cat}")
-    
-    # Render individual beautiful item catalog cards dynamically
-    for idx, (_, row) in enumerate(ranked_output.iterrows()):
-        item_vector = vectors[idx]
-        match_percentage = int(row['score'] * 100)
-        
-        # UI Product Block Card styling container wrapper
-        with st.container():
-            col_details, col_actions = st.columns([2.5, 1], gap="medium")
-            
-            with col_details:
-                st.markdown(f"### {row['name']}")
-                
-                # Align key statistics neatly
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Price", f"₹{int(row['price']):,}")
-                m2.metric("Avg Rating", f"⭐ {row['rating']}/5")
-                m3.metric("Tailored Match", f"🔥 {match_percentage}%")
-                
-                # --- INTERACTIVE REVIEW EXTENSION WINDOW ---
-                reviews = get_product_reviews(row['name'])
-                with st.expander(f"💬 Customer Reviews & Feedback ({len(reviews)})"):
-                    for r in reviews:
-                        st.markdown(f"**{r['user']}** {'★' * r['stars']}{'☆' * (5-r['stars'])}")
-                        st.caption(f'"{r["comment"]}"')
-                        st.markdown("<p style='margin:2px;'></p>", unsafe_allow_html=True)
-                    
-                    # Form enabling users to write review items
-                    with st.form(key=f"write_review_{row['id']}", clear_on_submit=True):
-                        st.markdown("**Write a Product Review**")
-                        rev_name = st.text_input("Your Name", value="Guest User", key=f"rn_{row['id']}")
-                        rev_stars = st.slider("Rating Stars", 1, 5, 5, key=f"rs_{row['id']}")
-                        rev_text = st.text_area("Your Review Thoughts", placeholder="Share your experience with this item...", key=f"rt_{row['id']}")
-                        
-                        if st.form_submit_button("Post Anonymous Review"):
-                            if rev_text.strip():
-                                st.session_state.persistent_reviews[row['name']].insert(0, {
-                                    "user": rev_name,
-                                    "stars": rev_stars,
-                                    "comment": rev_text.strip()
-                                })
-                                st.toast("✅ Review posted successfully!")
-                                st.rerun()
-            
-            with col_actions:
-                st.write("<p style='margin-top:25px;'></p>", unsafe_allow_html=True)
-                
-                # INTERACTION FUNCTIONALITIES: Automatically fires training backprop instantly when pushed
-                if st.button("👍 Love It", key=f"like_{row['id']}", use_container_width=True):
-                    instant_backprop_step(item_vector, 1.0)
-                    st.toast(f"Loved {row['name']}! Refining your feed...")
-                    st.rerun()
-                    
-                if st.button("👎 Hide From Feed", key=f"hide_{row['id']}", use_container_width=True):
-                    instant_backprop_step(item_vector, 0.0)
-                    st.session_state.blacklist.add(row['id'])
-                    st.toast(f"Removed {row['name']} from your recommendations.")
-                    st.rerun()
-                    
-        st.markdown("<hr style='border:1px solid #f0f2f6; margin-top:20px; margin-bottom:20px;'>", unsafe_allow_html=True)
-else:
-    st.markdown("---")
-    st.error(f" We couldn't find any products in '{user_cat}' matching your filter settings. Try raising your budget or clearing your search text query above.")
+# Left Premium Sidebar Control Deck
+st.sidebar.markdown("<h2 class='brand-title'>AURORA // DECK</h2>", unsafe_allow_html=True)
+user_cat = st.sidebar.selectbox("Collection Portfolio",
