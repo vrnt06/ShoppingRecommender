@@ -167,4 +167,100 @@ if "blacklist" not in st.session_state:
 
 # Left Premium Sidebar Control Deck
 st.sidebar.markdown("<h2 class='brand-title'>AURORA // DECK</h2>", unsafe_allow_html=True)
-user_cat = st.sidebar.selectbox("Collection Portfolio",
+user_cat = st.sidebar.selectbox("Collection Portfolio", [c.replace("_", " ").title() for c in CATEGORIES], index=0)
+selected_category_key = user_cat.lower().replace(" ", "_")
+
+user_budget = st.sidebar.slider("Investment Range Ceiling (₹)", min_value=100, max_value=250000, value=170000, step=1000)
+user_rating = st.sidebar.slider("Minimum Grade Quality", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
+
+st.sidebar.markdown("---")
+if st.sidebar.button("Reset Style History Profile", use_container_width=True):
+    st.session_state.blacklist.clear()
+    st.toast("Profile memory refreshed.")
+    st.rerun()
+
+# Workspace Header Layout
+st.markdown("<h1 class='brand-title'>AURORA</h1>", unsafe_allow_html=True)
+st.markdown("<p style='color: #8b949e; font-size: 1.1rem;'>Curated luxury items matched instantly to your aesthetic signature.</p>", unsafe_allow_html=True)
+
+search_input = st.text_input("Filter portfolio selection by specific keywords...", value="", placeholder="Search model variants, brands, series...")
+
+# Core Query Operations Execution Block
+u_vector = parse_user_input(selected_category_key, user_budget, user_rating)
+candidates, vectors = query_candidates_db(u_vector, selected_category_key, user_budget, st.session_state.blacklist, search_query=search_input)
+
+if not candidates.empty:
+    agent_nn.eval()
+    with torch.no_grad():
+        scores = agent_nn(torch.tensor(vectors).float()).numpy().flatten()
+    
+    candidates["score"] = scores
+    ranked_output = candidates.sort_values(by="score", ascending=False)
+    
+    st.markdown("<p style='color: #8b949e; margin-top:20px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.1em;'>Suggested Curations</p>", unsafe_allow_html=True)
+    
+    # Generate the curated product listings
+    for idx, (_, row) in enumerate(ranked_output.iterrows()):
+        item_vector = vectors[idx]
+        match_percentage = int(row['score'] * 100)
+        
+        # Open card container block
+        st.markdown(f"""
+            <div class='product-card'>
+                <div style='display: flex; justify-content: space-between; align-items: center;'>
+                    <h3 style='margin: 0; color: #f0f6fc; font-weight: 500;'>{row['name']}</h3>
+                    <div class='match-pill'>✦ {match_percentage}% MATCH</div>
+                </div>
+                <p style='color: #8b949e; margin: 8px 0 16px 0; font-size: 0.95rem;'>
+                    Collection Category: <span style='color: #c9d1d9;'>{row['category'].upper()}</span> &nbsp;|&nbsp; 
+                    Market Value: <span style='color: #58a6ff;'>₹{int(row['price']):,}</span> &nbsp;|&nbsp; 
+                    Evaluation: <span style='color: #ffd33d;'>★ {row['rating']} / 5.0</span>
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Insert interaction widgets cleanly underneath the custom formatted HTML container block
+        col_rev, col_act = st.columns([2.5, 1])
+        
+        with col_rev:
+            reviews_list = get_product_reviews(row['name'])
+            with st.expander(f"Verified Buyer Reviews ({len(reviews_list)})"):
+                for r in reviews_list:
+                    st.markdown(f"**{r['user']}** &nbsp;<span style='color:#ffd33d;'>{'★' * r['stars']}{'☆' * (5-r['stars'])}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='color:#8b949e; font-style: italic; font-size:0.9rem;'>\"{r['comment']}\"</p>", unsafe_allow_html=True)
+                
+                # Active inline review submission form interface
+                with st.form(key=f"rev_nordic_{row['id']}", clear_on_submit=True):
+                    inner_col1, inner_col2 = st.columns([3, 1])
+                    u_name = inner_col1.text_input("Name", value="Anonymous", key=f"un_{row['id']}")
+                    u_stars = inner_col2.slider("Stars", 1, 5, 5, key=f"us_{row['id']}")
+                    u_comment = st.text_area("Your Review Feedback", placeholder="Share your assessment regarding performance or build quality...", key=f"uc_{row['id']}")
+                    
+                    if st.form_submit_button("Publish Anonymous Review"):
+                        if u_comment.strip():
+                            st.session_state.persistent_reviews[row['name']].insert(0, {
+                                "user": u_name,
+                                "stars": u_stars,
+                                "comment": u_comment.strip()
+                            })
+                            st.toast("Review recorded.")
+                            st.rerun()
+                            
+        with col_act:
+            btn_col1, btn_col2 = st.columns(2)
+            # Automatic reaction hooks update the agent vector spaces instantly without requiring submit boxes
+            if btn_col1.button("✨ Keep", key=f"like_{row['id']}", use_container_width=True):
+                instant_backprop_step(item_vector, 1.0)
+                st.toast(f"Preference logged for {row['name']}")
+                st.rerun()
+                
+            if btn_col2.button("Dismiss", key=f"dismiss_{row['id']}", use_container_width=True):
+                instant_backprop_step(item_vector, 0.0)
+                st.session_state.blacklist.add(row['id'])
+                st.toast(f"Removed {row['name']}")
+                st.rerun()
+                
+        st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
+else:
+    st.markdown("---")
+    st.warning("No items fit your specific filters. Adjust your category criteria or expand your investment range sliders on the left menu.")
