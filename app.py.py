@@ -86,6 +86,7 @@ THEMES = {
         "card_bg": "rgba(22, 20, 48, 0.45)",
         "glow_shadow": "rgba(168, 85, 247, 0.15)",
         "chart_color": "#e879f9",
+        "matplotlib_border": (168/255, 85/255, 247/255, 0.15),
     },
     "Royale Gold": {
         "bg": "radial-gradient(circle at 50% 0%, #2a1f10 0%, #0a0805 70%)",
@@ -97,6 +98,7 @@ THEMES = {
         "card_bg": "rgba(35, 28, 18, 0.45)",
         "glow_shadow": "rgba(251, 191, 36, 0.15)",
         "chart_color": "#fbbf24",
+        "matplotlib_border": (217/255, 119/255, 6/255, 0.15),
     },
     "Emerald Premium": {
         "bg": "radial-gradient(circle at 50% 0%, #0a251c 0%, #040806 70%)",
@@ -108,6 +110,7 @@ THEMES = {
         "card_bg": "rgba(12, 33, 25, 0.45)",
         "glow_shadow": "rgba(52, 211, 153, 0.15)",
         "chart_color": "#34d399",
+        "matplotlib_border": (5/255, 150/255, 105/255, 0.15),
     }
 }
 
@@ -1012,9 +1015,9 @@ with t_analytics:
             ax.set_xlabel("Interaction Iterations", color='#94a3b8', fontsize=8)
             ax.set_ylabel("Loss Magnitude", color='#94a3b8', fontsize=8)
             ax.tick_params(colors='#94a3b8', labelsize=8)
-            ax.grid(color='rgba(255,255,255,0.05)', linestyle='--')
+            ax.grid(color=(1.0, 1.0, 1.0, 0.05), linestyle='--')
             for spine in ax.spines.values():
-                spine.set_color(theme_colors["border"])
+                spine.set_color(theme_colors["matplotlib_border"])
             st.pyplot(fig)
         else:
             st.info("No interactions recorded yet. Interact with product feeds (Keep / Dismiss) to build optimization analytics.")
@@ -1048,9 +1051,9 @@ with t_analytics:
             ax.invert_yaxis()
             ax.set_xlabel('Mean Absolute Connection Weight', color='#94a3b8', fontsize=8)
             ax.tick_params(colors='#94a3b8', labelsize=8)
-            ax.grid(color='rgba(255,255,255,0.05)', linestyle='--')
+            ax.grid(color=(1.0, 1.0, 1.0, 0.05), linestyle='--')
             for spine in ax.spines.values():
-                spine.set_color(theme_colors["border"])
+                spine.set_color(theme_colors["matplotlib_border"])
             st.pyplot(fig)
         except Exception as e:
             st.error(f"Failed to render neural matrix plots: {e}")
@@ -1161,7 +1164,7 @@ with t_commerce:
         items_html = "".join([f"""
             <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.9rem;">
                 <span>{html.escape(item['name'])} (x{item['qty']})</span>
-                <span>₹{int(item['price']*item['qty']):?}</span>
+                <span>₹{int(item['price']*item['qty']):,}</span>
             </div>
         """ for item in ord_det["items"]])
         
