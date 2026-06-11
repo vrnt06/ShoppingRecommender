@@ -65,7 +65,6 @@ def check_and_seed_db():
             st.error(f"Failed to auto-seed database: {e}")
             st.stop()
 check_and_seed_db()
-
 # ── Custom CSS Stylesheets (Premium Cosmic Glassmorphism) ─────────────────────
 st.markdown("""
 <style>
