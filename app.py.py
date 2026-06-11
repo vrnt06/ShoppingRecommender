@@ -94,4 +94,42 @@ def train_model():
         loss.backward()
         optimizer.step()
 
-    torch.save(model.state_
+    torch.save(model.state_dict(), "model.pt")
+
+# ==========================================
+# 4. STREAMLIT UI
+# ==========================================
+st.title("🔥 FAANG-Level Recommender System")
+st.markdown("---")
+
+# Generate a consistent fake user vector matching the exact feature shape
+if "user_vector" not in st.session_state:
+    st.session_state.user_vector = np.random.rand(FEATURE_DIM)
+
+# UI Layout split into interactive controls
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("💡 Discover Items")
+    if st.button("✨ Get Recommendations", use_container_width=True):
+        # Stage 1: Candidate Generation (Filtering via Cosine Similarity)
+        candidates, vectors = get_candidates(st.session_state.user_vector)
+
+        # Stage 2: Heavy Ranking (Scoring via PyTorch Neural Network)
+        scores = rank_products(vectors)
+        candidates["score"] = scores
+        
+        # Sort by high-value NN predictions
+        ranked = candidates.sort_values(by="score", ascending=False)
+        
+        st.write("### Recommended Items (Ranked):")
+        for _, row in ranked.iterrows():
+            st.info(f"**{row['name']}** \n\n 💰 Price: ₹{row['price']} | ⭐ Rating: {row['rating']} \n\n 🎯 Pipeline Score: `{round(row['score'], 4)}`")
+
+with col2:
+    st.subheader("⚙️ Model Operations")
+    st.write("Simulate real-time user-feedback training cycles directly on production infrastructure.")
+    if st.button("🔄 Retrain Neural Network", use_container_width=True):
+        with st.spinner("Retraining PyTorch Network layers..."):
+            train_model()
+        st.success("Model successfully retrained! Updated neural weights are active.")
