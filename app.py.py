@@ -7,38 +7,58 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-st.set_page_config(page_title="Enterprise AI Agent", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Enterprise AI Agent (2K+ SKUs)", page_icon="🤖", layout="wide")
 
 # ==========================================
-# 1. KNOWLEDGE BASE GENERATION (100 SKUs)
+# 1. PROCEDURAL KNOWLEDGE BASE (2,000+ SKUs)
 # ==========================================
 CATEGORIES = [
     "electronics", "footwear", "clothing", "beauty", "home_decor",
     "fitness", "books", "automotive", "toys", "groceries"
 ]
 
-category_baselines = {
-    "electronics": [("iPhone 13", 60000), ("Samsung S21", 50000), ("Dell Laptop", 70000), ("Sony Headphones", 15000), ("Apple iPad", 55000), ("Logitech Mouse", 8500), ("Smart Watch", 12000), ("4K Monitor", 25000), ("Mechanical Keyboard", 6000), ("GoPro Hero", 35000)],
-    "footwear": [("Nike Shoes", 5000), ("Adidas Sneakers", 4500), ("Puma Runners", 3500), ("Bata Formals", 2900), ("Crocs Clogs", 3900), ("Asics Gel", 14000), ("Woodland Boots", 6000), ("Skechers Walkers", 5500), ("Reebok Classics", 4000), ("Flip Flops", 1200)],
-    "clothing": [("Denim Jacket", 4000), ("Slim Shirt", 2500), ("Oversized Tee", 1500), ("Chino Trousers", 2200), ("Fleece Hoodie", 4900), ("Polo T-Shirt", 3500), ("Formal Blazer", 6500), ("Cargo Pants", 2800), ("Windbreaker", 4500), ("Puffer Vest", 5000)],
-    "beauty": [("Face Serum", 1200), ("Moisturizer", 800), ("Matte Lipstick", 900), ("Sunscreen SPF50", 650), ("Charcoal Facewash", 350), ("Hair Growth Oil", 550), ("Perfume EDP", 4500), ("Night Cream", 1500), ("Body Lotion", 400), ("Eye Palette", 2200)],
-    "home_decor": [("Ceramic Vase", 1500), ("Wall Clock", 1800), ("LED Desk Lamp", 2500), ("Scented Candle Set", 1200), ("Throw Blanket", 2000), ("Abstract Canvas", 4500), ("Indoor Planter", 900), ("Boho Rug", 6500), ("Cushion Covers", 600), ("Floating Shelves", 1400)],
-    "fitness": [("Dumbbell Set 10kg", 3500), ("Yoga Mat Pro", 1800), ("Resistance Bands", 800), ("Protein Shaker", 600), ("Creatine Monohydrate", 1500), ("Whey Isolate 1kg", 3800), ("Kettlebell 12kg", 2400), ("Jump Rope", 450), ("Gym Gloves", 700), ("Foam Roller", 1100)],
-    "books": [("Sci-Fi Novel", 450), ("Python Deep Learning", 3500), ("Biography of Musk", 790), ("Financial Freedom Guide", 550), ("Historical Fiction", 490), ("Self-Help Bestseller", 390), ("Hardcover Atlas", 2500), ("Cookbook Masterclass", 1800), ("Startup Playbook", 690), ("Art History Guide", 1600)],
-    "automotive": [("Dash Cam Pro", 5500), ("Car Vacuum Cleaner", 2200), ("Microfiber Towels", 400), ("Ceramic Coating Spray", 950), ("Phone Mount", 600), ("Seat Cushion Gel", 1500), ("Car Air Purifier", 2500), ("Jumper Cables", 1200), ("Tyre Inflator Digital", 3200), ("All-Weather Floor Mats", 4000)],
-    "toys": [("Lego Star Wars Set", 8500), ("RC Monster Truck", 3500), ("Rubiks Cube 3x3", 400), ("Board Game Strategy", 2800), ("Plush Teddy Bear", 1200), ("Drawing Tablet Toy", 1500), ("Action Figure", 1800), ("Wooden Puzzle Block", 900), ("Water Gun blaster", 1100), ("Diecast Model Car", 2200)],
-    "groceries": [("Premium Coffee Beans", 1200), ("Organic Green Tea", 450), ("Extra Virgin Olive Oil", 1400), ("Almond Butter", 650), ("Dark Chocolate 85%", 300), ("Rolled Oats 1kg", 400), ("Raw Honey", 500), ("Mixed Roasted Nuts", 950), ("Chia Seeds Pro", 350), ("Basmati Rice 5kg", 1100)]
+# Baseline structural archetypes used to procedurally seed the data generation engine
+category_archetypes = {
+    "electronics": {"prefixes": ["Pro", "Ultra", "Max", "Quantum", "Apex"], "names": ["Laptop", "Smartphone", "Headphones", "Monitor", "Smartwatch", "Keyboard", "Tablet", "Speaker"], "min_p": 1500, "max_p": 95000},
+    "footwear": {"prefixes": ["Air", "Gel", "Zoom", "Classic", "Trail"], "names": ["Runners", "Sneakers", "Formals", "Boots", "Loafers", "Sandals", "Clogs", "Trainers"], "min_p": 800, "max_p": 18000},
+    "clothing": {"prefixes": ["Urban", "Slim Fit", "Oversized", "Premium", "Vintage"], "names": ["Hoodie", "Jacket", "T-Shirt", "Chinos", "Shirt", "Cargo Pants", "Blazer", "Sweater"], "min_p": 500, "max_p": 12000},
+    "beauty": {"prefixes": ["Hydra", "Glow", "Matte", "Organic", "Revitalizing"], "names": ["Serum", "Moisturizer", "Lipstick", "Sunscreen", "Facewash", "Face Mask", "Perfume", "Night Cream"], "min_p": 250, "max_p": 6000},
+    "home_decor": {"prefixes": ["Nordic", "Boho", "Minimalist", "Rustic", "Luxury"], "names": ["Vase", "Wall Clock", "Desk Lamp", "Scented Candle", "Rug", "Canvas Art", "Planter", "Shelves"], "min_p": 350, "max_p": 15000},
+    "fitness": {"prefixes": ["Hex", "Pro", "Heavy Duty", "Ergonomic", "Isolate"], "names": ["Dumbbell Set", "Yoga Mat", "Resistance Bands", "Kettlebell", "Whey Protein", "Jump Rope", "Gym Gloves", "Foam Roller"], "min_p": 300, "max_p": 8000},
+    "books": {"prefixes": ["The Art of", "Mastering", "History of", "Introduction to", "The Secret of"], "names": ["Deep Learning", "Data Structures", "Quantum Physics", "Financial Freedom", "Sci-Fi Trilogy", "Macroeconomics", "Biographies", "Creative Writing"], "min_p": 200, "max_p": 4500},
+    "automotive": {"prefixes": ["DriveX", "Turbo", "HD", "All-Weather", "Premium"], "names": ["Dash Cam", "Car Vacuum", "Ceramic Coating", "Phone Mount", "Gel Cushion", "Air Purifier", "Tyre Inflator", "Floor Mats"], "min_p": 150, "max_p": 9000},
+    "toys": {"prefixes": ["Galactic", "Speed", "Classic", "Brainiac", "Retro"], "names": ["Building Blocks", "RC Car", "3x3 Puzzle Cube", "Board Game", "Plush Toy", "Drawing Tablet", "Action Figure", "Diecast Car"], "min_p": 190, "max_p": 12000},
+    "groceries": {"prefixes": ["Organic", "Pure", "Raw", "Roasted", "Artisanal"], "names": ["Coffee Beans", "Green Tea", "Olive Oil", "Almond Butter", "Dark Chocolate", "Rolled Oats", "Wild Honey", "Mixed Nuts"], "min_p": 100, "max_p": 2500}
 }
 
-raw_data = []
-product_id = 1
-for category, items in category_baselines.items():
-    for i, (name, base_price) in enumerate(items):
-        rating = round(4.0 + (i % 10) * 0.1, 1) if i % 2 == 0 else round(4.9 - (i % 10) * 0.1, 1)
-        raw_data.append([product_id, name, category, base_price, rating])
-        product_id += 1
+@st.cache_data
+def generate_large_catalog(items_per_category=200):
+    """Procedurally synthesizes a scaled retail universe containing varied metadata."""
+    raw_data = []
+    product_id = 1
+    
+    # State-controlled pseudo-random engine for reproducible matrix dimensions
+    rng = np.random.default_rng(seed=42)
+    
+    for category in CATEGORIES:
+        arch = category_archetypes[category]
+        for _ in range(items_per_category):
+            pfx = rng.choice(arch["prefixes"])
+            nm = rng.choice(arch["names"])
+            full_name = f"{pfx} {nm}"
+            
+            # Generate uniform log-scale distribution for realistic pricing models
+            price = int(rng.uniform(arch["min_p"], arch["max_p"]))
+            # Normal distribution centering ratings tightly around high-quality parameters
+            rating = round(float(rng.normal(loc=4.3, scale=0.3)), 1)
+            rating = max(1.0, min(5.0, rating)) # Strict clip bounds
+            
+            raw_data.append([product_id, full_name, category, price, rating])
+            product_id += 1
+            
+    return pd.DataFrame(raw_data, columns=["id", "name", "category", "price", "rating"])
 
-products = pd.DataFrame(raw_data, columns=["id", "name", "category", "price", "rating"])
+products = generate_large_catalog(items_per_category=205) # Total ~2,050 high-quality products
 
 def build_vectors(df_source=products):
     df = df_source.copy()
@@ -62,15 +82,15 @@ def parse_user_input(category_choice, max_budget, preferred_rating):
         vector.append(1.0 if cat == category_choice else 0.0)
     return np.array(vector, dtype=np.float32)
 
-def get_candidates(user_vector, category_choice, max_budget, top_k=3):
-    """
-    Stage 1: Multi-Layer Hard Filter (Category AND Price Caps)
-    """
-    # 🌟 CRITICAL FIX: Filter out items breaking category OR exceeding maximum budget limits
-    filter_mask = (products["category"] == category_choice) & (products["price"] <= max_budget)
+def get_candidates(user_vector, category_choice, max_budget, blacklist, top_k=3):
+    """Stage 1: Matrix Filter (Slicing active structures, pricing caps, and blacklist matrices)"""
+    filter_mask = (
+        (products["category"] == category_choice) & 
+        (products["price"] <= max_budget) & 
+        (~products["id"].isin(blacklist))
+    )
     filtered_products = products[filter_mask].copy()
     
-    # If budget completely rules out every item in this specific category, return empty results gracefully
     if filtered_products.empty:
         return filtered_products, np.array([], dtype=np.float32).reshape(0, FEATURE_DIM)
     
@@ -136,7 +156,10 @@ def dynamic_train_step(features, labels):
 # 4. STREAMLIT INTERFACE
 # ==========================================
 st.title("🤖 Self-Learning AI Recommendation Agent")
-st.caption("10 Categories × 10 Items Vector Embedding Pipeline with Implicit User Backpropagation Loops.")
+st.caption(f"Enterprise Scaled Universe: {len(products):,} Real-time Generated Products across {len(CATEGORIES)} Functional Segments.")
+
+if "blacklist" not in st.session_state:
+    st.session_state.blacklist = set()
 
 if "current_recommendations" not in st.session_state:
     st.session_state.current_recommendations = None
@@ -145,15 +168,17 @@ st.sidebar.header("🎯 Set Your Agent Preferences")
 user_cat = st.sidebar.selectbox("Preferred Category", [c.replace("_", " ").title() for c in CATEGORIES])
 selected_category_key = user_cat.lower().replace(" ", "_")
 
-# Slider configurations matching catalog minimums and maximums
-user_budget = st.sidebar.slider("Maximum Budget (₹)", min_value=300, max_value=100000, value=25000, step=500)
+user_budget = st.sidebar.slider("Maximum Budget (₹)", min_value=100, max_value=100000, value=25000, step=500)
 user_rating = st.sidebar.slider("Minimum Desired Rating", min_value=1.0, max_value=5.0, value=4.2, step=0.1)
+
+if st.sidebar.button("🧹 Clear Dislike Blacklist"):
+    st.session_state.blacklist.clear()
+    st.session_state.current_recommendations = None
+    st.sidebar.success("Blacklist cleared!")
 
 if st.sidebar.button("🧠 Compute Next Best Action", use_container_width=True):
     u_vector = parse_user_input(selected_category_key, user_budget, user_rating)
-    
-    # Category and Budget structural constraints applied here
-    candidates, vectors = get_candidates(u_vector, selected_category_key, user_budget)
+    candidates, vectors = get_candidates(u_vector, selected_category_key, user_budget, st.session_state.blacklist)
     
     if not candidates.empty:
         agent_nn.eval()
@@ -168,7 +193,7 @@ if st.sidebar.button("🧠 Compute Next Best Action", use_container_width=True):
 
 if st.session_state.current_recommendations is not None:
     if st.session_state.current_recommendations == "EMPTY":
-        st.error(f"❌ No items found in **{user_cat}** under ₹{user_budget:,}. Try increasing your maximum budget constraint.")
+        st.error(f"❌ No eligible items found in **{user_cat}**. They may be filtered out by budget or your dislike blacklist.")
     else:
         ranked_df, vectors_used = st.session_state.current_recommendations
         st.subheader(f"💡 Agent Recommendations: {user_cat}")
@@ -176,7 +201,7 @@ if st.session_state.current_recommendations is not None:
         with st.form("feedback_form"):
             feedback_dict = {}
             
-            for idx, row in ranked_df.iterrows():
+            for i, (idx, row) in enumerate(ranked_df.iterrows()):
                 col_item, col_feed = st.columns([3, 1])
                 with col_item:
                     st.info(f"**{row['name']}** \n💰 Price: ₹{row['price']:,} | ⭐ Rating: {row['rating']} | 🕸️ Current Layer Score: `{round(row['score'], 4)}`")
@@ -194,11 +219,14 @@ if st.session_state.current_recommendations is not None:
                     if action != "Select Action":
                         training_features.append(vectors_used[i])
                         training_labels.append(1.0 if action == "👍 Like / Buy" else 0.0)
-                
+                        
+                        if action == "👎 Dislike / Ignore":
+                            st.session_state.blacklist.add(row['id'])
+            
                 if training_features:
                     with st.spinner("Executing backpropagation layers..."):
                         dynamic_train_step(training_features, training_labels)
-                    st.success("🤖 Optimization Complete! Neural weights updated directly from your decisions.")
+                    st.success("🤖 Optimization Complete! Weights updated and disliked items blacklisted.")
                     st.session_state.current_recommendations = None
                     st.rerun()
                 else:
