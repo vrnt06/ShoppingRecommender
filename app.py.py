@@ -31,15 +31,41 @@ FEATURE_DIM = 16          # [rating_norm, price_norm, stock_norm, is_premium, bu
 MAX_GLOBAL_PRICE = 250_000.0
 RESULTS_PER_PAGE = 5
 # ── Auto-Initialization: SQLite Seeding for Streamlit Cloud ────────────────────
-if not os.path.exists(DB_FILE):
-    st.toast("⚡ Database file not found. Auto-seeding inventory dataset...")
-    try:
-        import seed_db
-        seed_db.seed_complete_database()
-        st.success("Database successfully initialized with 2,000 products and 6,000 reviews!")
-    except Exception as e:
-        st.error(f"Failed to auto-seed database: {e}")
-        st.stop()
+def check_and_seed_db():
+    needs_seeding = False
+    if not os.path.exists(DB_FILE):
+        needs_seeding = True
+    else:
+        try:
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
+                if not cursor.fetchone():
+                    needs_seeding = True
+                else:
+                    cursor.execute("PRAGMA table_info(products)")
+                    cols = [row[1] for row in cursor.fetchall()]
+                    required_cols = ["brand", "item", "modifier", "stock", "description", "image_url"]
+                    if not all(c in cols for c in required_cols):
+                        needs_seeding = True
+                
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reviews'")
+                if not cursor.fetchone():
+                    needs_seeding = True
+        except Exception:
+            needs_seeding = True
+            
+    if needs_seeding:
+        st.toast("⚡ Database schema outdated or missing. Re-seeding database...")
+        try:
+            import seed_db
+            seed_db.seed_complete_database()
+            st.success("Database successfully initialized/updated with 2,000 products and 6,000 reviews!")
+        except Exception as e:
+            st.error(f"Failed to auto-seed database: {e}")
+            st.stop()
+check_and_seed_db()
+
 # ── Custom CSS Stylesheets (Premium Cosmic Glassmorphism) ─────────────────────
 st.markdown("""
 <style>
