@@ -7,6 +7,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+# Set page configuration
+st.set_page_config(page_title="FAANG Recommender", page_icon="🔥", layout="wide")
+
 # ==========================================
 # 1. DATA & CANDIDATE GENERATION
 # ==========================================
@@ -20,17 +23,21 @@ products = pd.DataFrame([
 
 def build_vectors():
     df = products.copy()
+    # Normalize price
     df["price_norm"] = df["price"] / df["price"].max()
-    # Explicitly use prefix to avoid column matching errors
+    # One-hot encode category (creates 2 columns: category_electronics, category_footwear)
     df = pd.get_dummies(df, columns=["category"])
-    # Return features excluding id, name, and raw price
+    # Features left: rating (1), price_norm (1), category_electronics (1), category_footwear (1) = 4 Features Total
     return df.drop(["id", "name", "price"], axis=1).values
 
+# Derive feature dimensions dynamically to prevent ValueError shape mismatches
+PRODUCT_VECTORS = build_vectors()
+FEATURE_DIM = PRODUCT_VECTORS.shape[1] # Automatically evaluates to 4
+
 def get_candidates(user_vector, top_k=3):
-    vectors = build_vectors()
-    sims = cosine_similarity([user_vector], vectors)[0]
+    sims = cosine_similarity([user_vector], PRODUCT_VECTORS)[0]
     idx = np.argsort(sims)[-top_k:]
-    return products.iloc[idx].copy(), vectors[idx]
+    return products.iloc[idx].copy(), PRODUCT_VECTORS[idx]
 
 # ==========================================
 # 2. RANKING MODEL (NEURAL NETWORK)
@@ -48,21 +55,21 @@ class Ranker(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# Cache resource ensures the model isn't re-instantiated on every button click
+# Cache resource ensures the model instance persists across user interactions
 @st.cache_resource
-def init_model(input_dim=5):
+def init_model(input_dim):
     model = Ranker(input_dim)
     if os.path.exists("model.pt"):
         try:
             model.load_state_dict(torch.load("model.pt", map_location=torch.device('cpu')))
         except Exception:
-            pass # Fallback to random weights if model file is corrupted
+            pass # Fallback to random weights if file is missing/corrupted
     return model
 
-model = init_model()
+model = init_model(FEATURE_DIM)
 
 def rank_products(vectors):
-    model.eval() # Set model to evaluation mode
+    model.eval() 
     with torch.no_grad():
         scores = model(torch.tensor(vectors).float()).numpy().flatten()
     return scores
@@ -71,8 +78,8 @@ def rank_products(vectors):
 # 3. TRAINING ENGINE
 # ==========================================
 def train_model():
-    # Dummy training data 
-    X_train = torch.rand((10, 5))
+    # Synthetic training data aligned perfectly with the feature dimension
+    X_train = torch.rand((10, FEATURE_DIM))
     y_train = torch.randint(0, 2, (10, 1)).float()
     
     optimizer = optim.Adam(model.parameters(), lr=0.01)
@@ -87,39 +94,4 @@ def train_model():
         loss.backward()
         optimizer.step()
 
-    torch.save(model.state_dict(), "model.pt")
-
-# ==========================================
-# 4. STREAMLIT UI
-# ==========================================
-st.title("🔥 FAANG-Level Recommender System")
-st.caption("A Two-Stage Recommendation Pipeline: Cosine Similarity Candidate Generation + PyTorch Ranker NN")
-
-# Generate a consistent fake user vector based on session state so it doesn't shift constantly
-if "user_vector" not in st.session_state:
-    st.session_state.user_vector = np.random.rand(5)
-
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("✨ Get Recommendations", use_container_width=True):
-        st.subheader("Top Ranked Items")
-        
-        # 1. Candidate Retrieval Stage
-        candidates, vectors = get_candidates(st.session_state.user_vector)
-
-        # 2. Ranking Stage
-        scores = rank_products(vectors)
-        candidates["score"] = scores
-        
-        # Sort and Display
-        ranked = candidates.sort_values(by="score", ascending=False)
-        
-        for _, row in ranked.iterrows():
-            st.info(f"**{row['name']}** \n💰 Price: ₹{row['price']} | ⭐ Rating: {row['rating']}  \n🎯 AI Ranking Score: `{round(row['score'], 4)}`")
-
-with col2:
-    if st.button("⚙️ Retrain Model", use_container_width=True):
-        with st.spinner("Retraining PyTorch Neural Network..."):
-            train_model()
-        st.success("Model retrained and weights updated!")
+    torch.save(model.state_
