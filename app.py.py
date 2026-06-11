@@ -10,15 +10,13 @@ import torch.optim as optim
 st.set_page_config(page_title="Enterprise AI Agent", page_icon="🤖", layout="wide")
 
 # ==========================================
-# 1. GENERATING ENTERPRISE DATA (100 SKUs)
+# 1. KNOWLEDGE BASE GENERATION (100 SKUs)
 # ==========================================
-# Define 10 distinct retail categories
 CATEGORIES = [
     "electronics", "footwear", "clothing", "beauty", "home_decor",
     "fitness", "books", "automotive", "toys", "groceries"
 ]
 
-# High-fidelity baseline data used to generate 10 unique items per category programmatically
 category_baselines = {
     "electronics": [("iPhone 13", 60000), ("Samsung S21", 50000), ("Dell Laptop", 70000), ("Sony Headphones", 15000), ("Apple iPad", 55000), ("Logitech Mouse", 8500), ("Smart Watch", 12000), ("4K Monitor", 25000), ("Mechanical Keyboard", 6000), ("GoPro Hero", 35000)],
     "footwear": [("Nike Shoes", 5000), ("Adidas Sneakers", 4500), ("Puma Runners", 3500), ("Bata Formals", 2900), ("Crocs Clogs", 3900), ("Asics Gel", 14000), ("Woodland Boots", 6000), ("Skechers Walkers", 5500), ("Reebok Classics", 4000), ("Flip Flops", 1200)],
@@ -32,14 +30,10 @@ category_baselines = {
     "groceries": [("Premium Coffee Beans", 1200), ("Organic Green Tea", 450), ("Extra Virgin Olive Oil", 1400), ("Almond Butter", 650), ("Dark Chocolate 85%", 300), ("Rolled Oats 1kg", 400), ("Raw Honey", 500), ("Mixed Roasted Nuts", 950), ("Chia Seeds Pro", 350), ("Basmati Rice 5kg", 1100)]
 }
 
-# Construct the DataFrame programmatically
 raw_data = []
 product_id = 1
-
 for category, items in category_baselines.items():
-    # Loop generates exactly 10 distinct review configurations per segment
     for i, (name, base_price) in enumerate(items):
-        # Apply deterministic variance to ratings and configurations based on index
         rating = round(4.0 + (i % 10) * 0.1, 1) if i % 2 == 0 else round(4.9 - (i % 10) * 0.1, 1)
         raw_data.append([product_id, name, category, base_price, rating])
         product_id += 1
@@ -49,11 +43,8 @@ products = pd.DataFrame(raw_data, columns=["id", "name", "category", "price", "r
 def build_vectors(df_source=products):
     df = df_source.copy()
     df["price_norm"] = df["price"] / products["price"].max()
-    
-    # One-hot encode categories safely based on the global categorical spectrum
     df = pd.get_dummies(df, columns=["category"], dtype=int)
     
-    # Enforce static column integrity during sliced index lookups
     for cat in [f"category_{c}" for c in CATEGORIES]:
         if cat not in df.columns:
             df[cat] = 0
@@ -62,22 +53,26 @@ def build_vectors(df_source=products):
     return df[feature_cols].values.astype(np.float32)
 
 PRODUCT_VECTORS = build_vectors()
-FEATURE_DIM = PRODUCT_VECTORS.shape[1]  # Evaluates to 12 Dimensions
+FEATURE_DIM = PRODUCT_VECTORS.shape[1]  # 12 Dimensions
 
 def parse_user_input(category_choice, max_budget, preferred_rating):
     price_norm = max_budget / products["price"].max()
     vector = [preferred_rating, price_norm]
-    
-    # Dynamic one-hot generation for the 10 structural segments
     for cat in CATEGORIES:
         vector.append(1.0 if cat == category_choice else 0.0)
-        
     return np.array(vector, dtype=np.float32)
 
-def get_candidates(user_vector, category_choice, top_k=3):
-    """Stage 1: Strict Category Isolation Shielding"""
-    category_mask = products["category"] == category_choice
-    filtered_products = products[category_mask].copy()
+def get_candidates(user_vector, category_choice, max_budget, top_k=3):
+    """
+    Stage 1: Multi-Layer Hard Filter (Category AND Price Caps)
+    """
+    # 🌟 CRITICAL FIX: Filter out items breaking category OR exceeding maximum budget limits
+    filter_mask = (products["category"] == category_choice) & (products["price"] <= max_budget)
+    filtered_products = products[filter_mask].copy()
+    
+    # If budget completely rules out every item in this specific category, return empty results gracefully
+    if filtered_products.empty:
+        return filtered_products, np.array([], dtype=np.float32).reshape(0, FEATURE_DIM)
     
     filtered_vectors = build_vectors(filtered_products)
     sims = cosine_similarity([user_vector], filtered_vectors)[0]
@@ -128,7 +123,7 @@ def dynamic_train_step(features, labels):
     loss_fn = nn.BCELoss()
     
     agent_nn.train()
-    for _ in range(25): # Increased epochs slightly to process higher dimensional data paths
+    for _ in range(25):
         predictions = agent_nn(X)
         loss = loss_fn(predictions, y)
         optimizer.zero_grad()
@@ -148,58 +143,65 @@ if "current_recommendations" not in st.session_state:
 
 st.sidebar.header("🎯 Set Your Agent Preferences")
 user_cat = st.sidebar.selectbox("Preferred Category", [c.replace("_", " ").title() for c in CATEGORIES])
-# Map readable name back to technical key string
 selected_category_key = user_cat.lower().replace(" ", "_")
 
+# Slider configurations matching catalog minimums and maximums
 user_budget = st.sidebar.slider("Maximum Budget (₹)", min_value=300, max_value=100000, value=25000, step=500)
 user_rating = st.sidebar.slider("Minimum Desired Rating", min_value=1.0, max_value=5.0, value=4.2, step=0.1)
 
 if st.sidebar.button("🧠 Compute Next Best Action", use_container_width=True):
     u_vector = parse_user_input(selected_category_key, user_budget, user_rating)
-    candidates, vectors = get_candidates(u_vector, selected_category_key)
     
-    agent_nn.eval()
-    with torch.no_grad():
-        scores = agent_nn(torch.tensor(vectors).float()).numpy().flatten()
+    # Category and Budget structural constraints applied here
+    candidates, vectors = get_candidates(u_vector, selected_category_key, user_budget)
     
-    candidates["score"] = scores
-    ranked_output = candidates.sort_values(by="score", ascending=False)
-    st.session_state.current_recommendations = (ranked_output, vectors)
+    if not candidates.empty:
+        agent_nn.eval()
+        with torch.no_grad():
+            scores = agent_nn(torch.tensor(vectors).float()).numpy().flatten()
+        
+        candidates["score"] = scores
+        ranked_output = candidates.sort_values(by="score", ascending=False)
+        st.session_state.current_recommendations = (ranked_output, vectors)
+    else:
+        st.session_state.current_recommendations = "EMPTY"
 
 if st.session_state.current_recommendations is not None:
-    ranked_df, vectors_used = st.session_state.current_recommendations
-    
-    st.subheader(f"💡 Agent Recommendations: {user_cat}")
-    
-    with st.form("feedback_form"):
-        feedback_dict = {}
+    if st.session_state.current_recommendations == "EMPTY":
+        st.error(f"❌ No items found in **{user_cat}** under ₹{user_budget:,}. Try increasing your maximum budget constraint.")
+    else:
+        ranked_df, vectors_used = st.session_state.current_recommendations
+        st.subheader(f"💡 Agent Recommendations: {user_cat}")
         
-        for idx, row in ranked_df.iterrows():
-            col_item, col_feed = st.columns([3, 1])
-            with col_item:
-                st.info(f"**{row['name']}** \n💰 Price: ₹{row['price']} | ⭐ Rating: {row['rating']} | 🕸️ Current Layer Score: `{round(row['score'], 4)}`")
-            with col_feed:
-                feedback_dict[idx] = st.radio("Feedback", ["Select Action", "👍 Like / Buy", "👎 Dislike / Ignore"], key=f"feed_{row['id']}")
+        with st.form("feedback_form"):
+            feedback_dict = {}
+            
+            for idx, row in ranked_df.iterrows():
+                col_item, col_feed = st.columns([3, 1])
+                with col_item:
+                    st.info(f"**{row['name']}** \n💰 Price: ₹{row['price']:,} | ⭐ Rating: {row['rating']} | 🕸️ Current Layer Score: `{round(row['score'], 4)}`")
+                with col_feed:
+                    feedback_dict[idx] = st.radio("Feedback", ["Select Action", "👍 Like / Buy", "👎 Dislike / Ignore"], key=f"feed_{row['id']}")
+                    
+            submitted = st.form_submit_button("📥 Process Feedback & Train Neural Layers", use_container_width=True)
+            
+            if submitted:
+                training_features = []
+                training_labels = []
                 
-        submitted = st.form_submit_button("📥 Process Feedback & Train Neural Layers", use_container_width=True)
-        
-        if submitted:
-            training_features = []
-            training_labels = []
-            
-            for i, (idx, row) in enumerate(ranked_df.iterrows()):
-                action = feedback_dict[idx]
-                if action != "Select Action":
-                    training_features.append(vectors_used[i])
-                    training_labels.append(1.0 if action == "👍 Like / Buy" else 0.0)
-            
-            if training_features:
-                with st.spinner("Executing backpropagation layers..."):
-                    dynamic_train_step(training_features, training_labels)
-                st.success("🤖 Optimization Complete! Neural weights updated directly from your decisions.")
-                st.session_state.current_recommendations = None
-                st.rerun()
-            else:
-                st.warning("Please provide feedback on at least one item to trigger training.")
+                for i, (idx, row) in enumerate(ranked_df.iterrows()):
+                    action = feedback_dict[idx]
+                    if action != "Select Action":
+                        training_features.append(vectors_used[i])
+                        training_labels.append(1.0 if action == "👍 Like / Buy" else 0.0)
+                
+                if training_features:
+                    with st.spinner("Executing backpropagation layers..."):
+                        dynamic_train_step(training_features, training_labels)
+                    st.success("🤖 Optimization Complete! Neural weights updated directly from your decisions.")
+                    st.session_state.current_recommendations = None
+                    st.rerun()
+                else:
+                    st.warning("Please provide feedback on at least one item to trigger training.")
 else:
     st.write("### 👈 Adjust preferences on the sidebar and click **Compute Next Best Action** to initiate the pipeline.")
