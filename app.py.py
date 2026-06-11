@@ -479,7 +479,7 @@ with t_curation:
                         c_n, c_s = st.columns([3, 1])
                         rev_name = c_n.text_input("Name", placeholder="Anonymous User", key=f"n_{row['id']}")
                         rev_stars = c_s.slider("Stars", 1, 5, 5, key=f"s_{row['id']}")
-                        rev_comment = st.text_area("Review Comment", placeholder="Describe your experience with this model...", key=f"c_{row['id']}", rows=2)
+                        rev_comment = st.text_area("Review Comment", placeholder="Describe your experience with this model...", key=f"c_{row['id']}", height=100)
                         if st.form_submit_button("Submit Client Review"):
                             if rev_comment.strip():
                                 author = rev_name.strip() or "Anonymous User"
