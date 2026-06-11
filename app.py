@@ -13,9 +13,8 @@ st.set_page_config(page_title="Production Relational AI Agent", page_icon="🤖"
 DB_FILE = "inventory.db"
 CATEGORIES = ["electronics", "footwear", "clothing", "beauty", "home_decor", "fitness", "books", "automotive", "toys", "groceries"]
 FEATURE_DIM = 12
-MAX_GLOBAL_PRICE = 180000.0  # Synced maximum pricing anchor across database ranges
+MAX_GLOBAL_PRICE = 250000.0  # Kept high to ensure premium items don't get clipped out easily
 
-# Check for database presence before executing front-end rendering
 if not os.path.exists(DB_FILE):
     st.error("🚨 Missing 'inventory.db' file! Please run 'python seed_db.py' first to build and populate your 2,000 product rows.")
     st.stop()
@@ -46,17 +45,17 @@ def parse_user_input(category_choice, max_budget, preferred_rating):
     return np.array([preferred_rating, price_norm] + cat_array, dtype=np.float32)
 
 def query_candidates_db(user_vector, category_choice, max_budget, blacklist, search_query=""):
-    """Performs Stage 1 relational lookup at database core layer."""
+    """Performs Stage 1 relational lookup with intersection parameters."""
     conn = sqlite3.connect(DB_FILE)
-    query = "SELECT id, name, category, price, rating FROM products WHERE price <= ?"
-    params = [max_budget]
     
+    # FIX: Base query filters on budget AND category simultaneously to keep search spaces clean
+    query = "SELECT id, name, category, price, rating FROM products WHERE price <= ? AND category = ?"
+    params = [max_budget, category_choice]
+    
+    # FIX: Text search matches contextually alongside filters instead of replacing them
     if search_query.strip():
         query += " AND name LIKE ?"
         params.append(f"%{search_query.strip()}%")
-    else:
-        query += " AND category = ?"
-        params.append(category_choice)
         
     if blacklist:
         placeholders = ",".join("?" for _ in blacklist)
@@ -72,7 +71,6 @@ def query_candidates_db(user_vector, category_choice, max_budget, blacklist, sea
     candidate_vectors = build_vectors_from_df(df_candidates)
     sims = cosine_similarity([user_vector], candidate_vectors)[0]
     
-    # Rank top 3 items within filtering sub-selections
     actual_k = min(3, len(df_candidates))
     top_indices = np.argsort(sims)[-actual_k:]
     
@@ -125,14 +123,15 @@ if "blacklist" not in st.session_state:
 if "current_recommendations" not in st.session_state:
     st.session_state.current_recommendations = None
 
-search_input = st.text_input("🔍 Search Entire 2,000 Product Database (e.g., 'iPhone', 'Ultraboost', 'LEGO', 'Dark Chocolate')", value="")
-
 st.sidebar.header("🎯 Target Context Weights")
-user_cat = st.sidebar.selectbox("Fallback Category", [c.replace("_", " ").title() for c in CATEGORIES])
+user_cat = st.sidebar.selectbox("Preferred Category", [c.replace("_", " ").title() for c in CATEGORIES], index=0)
 selected_category_key = user_cat.lower().replace(" ", "_")
 
-user_budget = st.sidebar.slider("Maximum Budget Target (₹)", min_value=100, max_value=250000, value=120000, step=1000)
+# FIX: Increased maximum default slider range to accommodate high-end luxury items
+user_budget = st.sidebar.slider("Maximum Budget Target (₹)", min_value=100, max_value=250000, value=180000, step=1000)
 user_rating = st.sidebar.slider("Minimum Quality Target", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
+
+search_input = st.text_input(f"🔍 Search within '{user_cat}' (e.g., Leave blank for all, or type a keyword)", value="")
 
 if st.sidebar.button("🧹 Clear Dislike Blacklist"):
     st.session_state.blacklist.clear()
@@ -156,7 +155,7 @@ if st.button("🧠 Execute Matrix Search & Rank", type="primary", use_container_
 
 if st.session_state.current_recommendations is not None:
     if st.session_state.current_recommendations == "EMPTY":
-        st.error("❌ No matching records found. Refine your text keywords or increase pricing budget sliders.")
+        st.error(f"❌ No matching items found under '{user_cat}' matching your search string below ₹{user_budget:,}. Try raising your budget slider on the left panel!")
     else:
         ranked_df, vectors_used = st.session_state.current_recommendations
         st.subheader("💡 Retrieved Database Rows & Current Layer Scoring Values")
