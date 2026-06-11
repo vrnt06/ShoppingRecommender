@@ -1,30 +1,36 @@
 """
 seed_db.py — Inventory database seeder.
-Generates 2,000 distinct products across 10 categories and writes them to inventory.db.
-
+Generates 2,000 distinct products across 10 categories and writes them to inventory.db,
+along with associated rich metadata (brand, model, stock, descriptions, Unsplash URLs)
+and a robust reviews table with 6,000 generated reviews.
 Run once before launching app.py:
     python seed_db.py
 """
-
 import sqlite3
 import numpy as np
-
 DB_FILE = "inventory.db"
-
 CATEGORIES = [
     "electronics", "footwear", "clothing", "beauty", "home_decor",
     "fitness", "books", "automotive", "toys", "groceries",
 ]
-
-# Each category defines brands, product lines, price range, and rating distribution.
-SEED_MATRICES: dict[str, dict] = {
+SEED_MATRICES = {
     "electronics": {
         "brands": ["Apple", "Samsung", "Sony", "Dell", "HP", "ASUS", "Lenovo", "Logitech", "LG", "Bose",
                    "Anker", "Razer", "Sennheiser", "Corsair", "TP-Link"],
         "items": ["iPhone", "Galaxy S Ultra", "OLED Monitor", "Wireless Headphones", "Mechanical Keyboard",
                   "Gaming Mouse", "UltraBook Laptop", "Tablet Pro", "4K Smart TV", "Bluetooth Speaker",
                   "Power Bank 20K", "Noise Cancelling Earbuds", "Wi-Fi 7 Router", "External SSD 1TB", "Webcam 1080p"],
-        "min_p": 1_500, "max_p": 160_000, "rating_loc": 4.3, "rating_scale": 0.30,
+        "min_p": 1500, "max_p": 160000, "rating_loc": 4.3, "rating_scale": 0.30,
+        "images": [
+            "photo-1546868871-7041f2a55e12", "photo-1505740420928-5e560c06d30e",
+            "photo-1527443224154-c4a3942d3acf", "photo-1587829741301-dc798b83add3",
+            "photo-1615663245857-ac93bb7c39e7", "photo-1542751371-adc38448a05e",
+            "photo-1496181130204-755241524eab", "photo-1588872657578-7efd1f1555ed",
+            "photo-1593305841991-05c297ba4575", "photo-1608043152269-423dbba4e7e1",
+            "photo-1609081219090-a6d81d3085bf", "photo-1590658268037-6bf12165a8df",
+            "photo-1544244015-0df4b3ffc6b0", "photo-1618424181497-157f25b6ddd5"
+        ],
+        "desc": "An executive-grade {brand} {item} ({modifier}) designed for high performance. Offers stunning visual clarity, lightning-fast response times, and premium durability for discerning users."
     },
     "footwear": {
         "brands": ["Nike", "Adidas", "Puma", "Asics", "New Balance", "Skechers", "Reebok", "Under Armour",
@@ -33,7 +39,15 @@ SEED_MATRICES: dict[str, dict] = {
                   "Classic Lifestyle Sneakers", "Walking Comfort Shoes", "Retro Court Shoes", "Waterproof Hiking Boots",
                   "Leather Chukka Boots", "Classic Clogs", "Two-Strap Sandals", "Canvas High-Tops",
                   "Skate Leather Shoes", "Slip-On Loafers", "Athletic Training Shoes"],
-        "min_p": 1_200, "max_p": 22_000, "rating_loc": 4.4, "rating_scale": 0.25,
+        "min_p": 1200, "max_p": 22000, "rating_loc": 4.4, "rating_scale": 0.25,
+        "images": [
+            "photo-1542291026-7eec264c27ff", "photo-1606107557195-0e29a4b5b4aa",
+            "photo-1595950653106-6c9ebd614d3a", "photo-1549298916-b41d501d3772",
+            "photo-1608231387042-66d1773070a5", "photo-1607522370275-f14206abe5d3",
+            "photo-1539185441755-769473a23570", "photo-1520639888713-7851133b1ed0",
+            "photo-1560343090-f0409e92791a", "photo-1618677831708-0e7fda3148b4"
+        ],
+        "desc": "Engineered for ultimate comfort and durability, the {brand} {item} ({modifier}) features responsive cushioning, slip-resistant soles, and a sleek modern silhouette perfect for daily wear."
     },
     "clothing": {
         "brands": ["Levi's", "Patagonia", "The North Face", "Nike", "Adidas", "Uniqlo", "Ralph Lauren",
@@ -42,7 +56,15 @@ SEED_MATRICES: dict[str, dict] = {
                   "Tiro Track Pants", "AIRism Cotton Tee", "Pique Cotton Polo", "Oxford Button-Down Shirt",
                   "Classic Chino Pants", "Full-Zip Fleece Jacket", "Rugged Work Jacket", "Cargo Utility Pants",
                   "Merino Wool Sweater", "Windbreaker Jacket", "Thermal Base Layer"],
-        "min_p": 700, "max_p": 35_000, "rating_loc": 4.3, "rating_scale": 0.28,
+        "min_p": 700, "max_p": 35000, "rating_loc": 4.3, "rating_scale": 0.28,
+        "images": [
+            "photo-1521572267360-ee0c2909d518", "photo-1544441893-675973e31985",
+            "photo-1591047139829-d91aecb6caea", "photo-1551799517-eb8f03cb5e6a",
+            "photo-1541099649105-f69ad21f3246", "photo-1507679799987-c73779587ccf",
+            "photo-1620799140408-edc6dcb6d633", "photo-1596755094514-f87e34085b2c",
+            "photo-1624378439575-d8705ad7ae80", "photo-1602810318383-e386cc2a3ccf"
+        ],
+        "desc": "Tailored from exceptionally soft, breathable materials, this {brand} {item} ({modifier}) provides a sophisticated look and all-day comfort. An essential addition to any curated wardrobe."
     },
     "beauty": {
         "brands": ["COSRX", "The Ordinary", "CeraVe", "La Roche-Posay", "Laneige", "Paula's Choice",
@@ -51,7 +73,14 @@ SEED_MATRICES: dict[str, dict] = {
                   "Lip Sleeping Mask", "2% BHA Liquid Exfoliant", "Advanced Night Repair", "Hydrating Auto-Replenisher",
                   "Facial Fuel Cleanser", "Watermelon Glow Toner", "Sauvage Eau de Parfum",
                   "Bleu de Chanel Intense", "Radiant Creamy Concealer", "Matte Bullet Lipstick", "Hair Perfector Bond Repair"],
-        "min_p": 400, "max_p": 15_000, "rating_loc": 4.5, "rating_scale": 0.22,
+        "min_p": 400, "max_p": 15000, "rating_loc": 4.5, "rating_scale": 0.22,
+        "images": [
+            "photo-1608248597481-496100c80836", "photo-1556228720-195a672e8a03",
+            "photo-1598440947619-2c35fc9aa908", "photo-1620916566398-39f1143ab7be",
+            "photo-1612817288484-6f916006741a", "photo-1571781926291-c477ebfd024b",
+            "photo-1526947425960-945c6e72858f", "photo-1617897903246-719242758050"
+        ],
+        "desc": "Formulated with dermatologist-approved active ingredients, this {brand} {item} ({modifier}) targets skin vitality, offering a radiant, hydrated complexion and visible results."
     },
     "home_decor": {
         "brands": ["Philips Hue", "IKEA", "Bath & Body Works", "Marshall", "Safavieh", "Umbra", "Zinus",
@@ -61,7 +90,14 @@ SEED_MATRICES: dict[str, dict] = {
                   "Faux Fur Throw Blanket", "Magnetic Moon Desk Lamp", "Floating Wooden Shelves",
                   "Himalayan Pink Salt Lamp", "Velvet Accent Armchair", "Blended Area Rug",
                   "Geometric Desktop Planter", "Studio Writing Desk", "Pure Cool Purifying Fan"],
-        "min_p": 500, "max_p": 45_000, "rating_loc": 4.3, "rating_scale": 0.28,
+        "min_p": 500, "max_p": 45000, "rating_loc": 4.3, "rating_scale": 0.28,
+        "images": [
+            "photo-1513519245088-0e12902e5a38", "photo-1513694203232-719a280e022f",
+            "photo-1540518614846-7eded433c457", "photo-1586023492125-27b2c045efd7",
+            "photo-1538688525198-9b88f6f53126", "photo-1600210492486-724fe5c67fb0",
+            "photo-1505691938895-1758d7feb511"
+        ],
+        "desc": "Elevate your living space with this artisan-crafted {brand} {item} ({modifier}). Blends timeless aesthetics with modern functionality, creating a warm and sophisticated ambiance."
     },
     "fitness": {
         "brands": ["Bowflex", "Manduka", "TRX", "Optimum Nutrition", "Myprotein", "Theragun", "Fitbit",
@@ -71,7 +107,13 @@ SEED_MATRICES: dict[str, dict] = {
                   "Smart Health Tracker", "GPS Running Smartwatch", "Olympic Steel Barbell",
                   "Indoor Stationary Bike", "Ergonomic Rowing Machine", "Wide Mouth Water Bottle",
                   "Classic Shaker Cup", "Zip-Up Track Jacket", "Compression Training Shorts"],
-        "min_p": 300, "max_p": 180_000, "rating_loc": 4.4, "rating_scale": 0.25,
+        "min_p": 300, "max_p": 180000, "rating_loc": 4.4, "rating_scale": 0.25,
+        "images": [
+            "photo-1517838277536-f5f99be501cd", "photo-1571019613454-1cb2f99b2d8b",
+            "photo-1605296867304-46d5465a25f1", "photo-1558017487-06bf9f82613a",
+            "photo-1548690312-e3b507d8c110", "photo-1594737626072-90dc274bc2bd"
+        ],
+        "desc": "Achieve your peak performance with the {brand} {item} ({modifier}). Built from heavy-duty, gym-grade materials, it's designed to withstand intense workouts and optimize your training metrics."
     },
     "books": {
         "brands": ["O'Reilly Media", "MIT Press", "Penguin", "HarperCollins", "Random House",
@@ -82,7 +124,14 @@ SEED_MATRICES: dict[str, dict] = {
                   "Introduction to Algorithms", "The Intelligent Investor Edition", "Thinking Fast and Slow Matrix",
                   "Sapiens A Brief History", "Principles for Success", "The Psychology of Money",
                   "Continuous Delivery Frameworks", "The Pragmatic Programmer", "Grokking Algorithms Blueprint"],
-        "min_p": 250, "max_p": 8_000, "rating_loc": 4.5, "rating_scale": 0.20,
+        "min_p": 250, "max_p": 8000, "rating_loc": 4.5, "rating_scale": 0.20,
+        "images": [
+            "photo-1544947950-fa07a98d237f", "photo-1506880018603-83d5b814b5a6",
+            "photo-1512820790803-83ca734da794", "photo-1495446815901-a7297e633e8d",
+            "photo-1516979187457-637abb4f9353", "photo-1589829085413-56de8ae18c73",
+            "photo-1532012197267-da84d127e765"
+        ],
+        "desc": "A masterfully written guide, this edition of {brand} {item} ({modifier}) delivers expert strategies, deep industry insights, and actionable advice to accelerate your learning journey."
     },
     "automotive": {
         "brands": ["Vantrue", "70mai", "Anker Roav", "Chemical Guys", "Meguiar's", "NOCO", "Baseus",
@@ -92,7 +141,13 @@ SEED_MATRICES: dict[str, dict] = {
                   "Portable Tyre Inflator", "Digital Pressure Gauge", "X-tremeVision Headlight Bulbs",
                   "ClearMax Wiper Blades", "Magnetic Car Phone Mount", "GPS Smart Navigator",
                   "Interior Glass Wipes Tube", "High Power Car Vacuum", "Laser Measured Floor Mats"],
-        "min_p": 300, "max_p": 35_000, "rating_loc": 4.3, "rating_scale": 0.28,
+        "min_p": 300, "max_p": 35000, "rating_loc": 4.3, "rating_scale": 0.28,
+        "images": [
+            "photo-1486006920555-c77dce18193b", "photo-1617788138017-80ad40651399",
+            "photo-1549399542-7e3f8b79c341", "photo-1563720223185-11003d516935",
+            "photo-1605559424843-9e4c228bf1c2", "photo-1619642751034-765dfdf7c58e"
+        ],
+        "desc": "Protect and optimize your vehicle with the high-performance {brand} {item} ({modifier}). Easy to install and constructed from rugged materials, it ensures longevity and road safety."
     },
     "toys": {
         "brands": ["LEGO", "Hasbro", "Mattel", "Rubik's", "DJI Ryze", "Nerf", "Hot Wheels", "Barbie",
@@ -102,7 +157,13 @@ SEED_MATRICES: dict[str, dict] = {
                   "Tello Mini Drone", "Commander Rotating Blaster", "20-Car Gift Pack Assortment",
                   "Dreamhouse Playset", "Marvel Collectible Figure", "Smart Stages Interactive Puppy",
                   "Villainous Strategy Expansion", "Wooden Engineering Blocks", "Modeling Compound 24-Pack"],
-        "min_p": 150, "max_p": 85_000, "rating_loc": 4.4, "rating_scale": 0.26,
+        "min_p": 150, "max_p": 85000, "rating_loc": 4.4, "rating_scale": 0.26,
+        "images": [
+            "photo-1587654780291-39c9404d746b", "photo-1558060370-d644479cb6f7",
+            "photo-1596461404969-9ae70f2830c1", "photo-1515488042361-404e9250afef",
+            "photo-1566577134770-3d85bb3a9cc4", "photo-1608889175123-8ec330b86f84"
+        ],
+        "desc": "Ignite imagination and cognitive development with the {brand} {item} ({modifier}). Featuring interactive components and high-quality build materials, it provides hours of engaging fun."
     },
     "groceries": {
         "brands": ["Blue Tokai", "Organic India", "Borges", "Happilo", "Pintola", "Lindt", "Quaker",
@@ -113,86 +174,219 @@ SEED_MATRICES: dict[str, dict] = {
                   "Rolled Oats Whole Grain", "Raw Himalayan Honey", "Organic White Chia Seeds",
                   "Super Basmati Rice 5kg", "Corn Flakes Breakfast Cereal", "Blended Refined Cooking Oil",
                   "Natural Unsweetened Cocoa", "Caramelized Biscuit Spread", "Hazelnut Cocoa Spread Jar"],
-        "min_p": 50, "max_p": 4_500, "rating_loc": 4.4, "rating_scale": 0.22,
+        "min_p": 50, "max_p": 4500, "rating_loc": 4.4, "rating_scale": 0.22,
+        "images": [
+            "photo-1542838132-92c53300491e", "photo-1596040033229-a9821ebd058d",
+            "photo-1474979266404-7eaacbcd87c5", "photo-1471193945509-9ad0617afabf",
+            "photo-1576092768241-dec231879fc3", "photo-1509440159596-0249088772ff",
+            "photo-1578985545062-69928b1d9587"
+        ],
+        "desc": "Sourced from the finest natural ingredients, this organic {brand} {item} ({modifier}) offers rich, authentic flavors and dense nutritional value. Perfect for gourmet culinary experiences."
     },
 }
-
 MODIFIERS = [
     "Pro", "Max", "Ultra", "Elite", "Classic", "Series II", "v2",
     "Edition", "Premium", "Advanced", "Signature", "Select", "Core", "Lite", "Plus",
 ]
-
 PRODUCTS_PER_CATEGORY = 200
-
-
-def _generate_products(rng: np.random.Generator) -> list[tuple[str, str, int, float]]:
-    """
-    Return a flat list of (name, category, price, rating) tuples.
-    Each category gets exactly PRODUCTS_PER_CATEGORY unique entries.
-    O(n) duplicate detection via a set — not a linear scan.
-    """
-    rows: list[tuple[str, str, int, float]] = []
-
+REVIEWERS = [
+    "Alex M.", "S. Taylor", "Jordan K.", "Emma Watson", "Rohan Gupta", "Clara R.",
+    "Priyesh S.", "David Miller", "Elena Rostova", "Hiroshi Tanaka", "Sarah Jenkins", "Michael O'Connor"
+]
+CATEGORY_REVIEWS = {
+    "electronics": {
+        "pos": ["Absolutely amazing quality! The display/sound is top-notch.",
+                "Well worth the premium price. Sleek design and works perfectly.",
+                "Very impressed with the build quality. Apple-like precision.",
+                "Exceeded my expectations. The speed and screen quality are unmatched."],
+        "neg": ["Decent, but the battery life is slightly lower than expected.",
+                "A bit overpriced for the specs, although the finish is nice.",
+                "Had some connectivity issues at first, but it works okay now.",
+                "It's good, but the user manual was missing."]
+    },
+    "footwear": {
+        "pos": ["Incredibly comfortable! Feels like walking on clouds.",
+                "Perfect fit and great arch support. Highly recommend.",
+                "Very stylish and the materials feel highly durable.",
+                "Amazing traction and look. Got compliments on day one."],
+        "neg": ["A bit tight around the toes. I suggest ordering half a size up.",
+                "Comfortable but the color is slightly different from the photos.",
+                "The laces are a bit short, but otherwise a solid pair of shoes."]
+    },
+    "clothing": {
+        "pos": ["Stunning fabric and fit! Drapes perfectly on the shoulders.",
+                "Excellent stitching. Breathable, premium texture.",
+                "Feels very high quality. Fits true to size and handles washing well.",
+                "Incredibly cozy and stylish. A staple in my collection now."],
+        "neg": ["Shrank a little bit after the first wash, recommend cold water only.",
+                "Sleeve length is slightly longer than standard sizes.",
+                "Nice texture, but the color is slightly duller than online photos."]
+    },
+    "beauty": {
+        "pos": ["Immediate difference in skin texture! So soft and glowing.",
+                "Amazing scent and non-greasy formula. Extremely hydrating.",
+                "A holy grail product. Cleared my skin barrier in a week.",
+                "Exquisite packaging and luxurious application feel."],
+        "neg": ["Works well but has a slightly strong medicinal scent.",
+                "Takes some time to absorb fully. Best for night use.",
+                "A bit heavy for very oily skin types, but good quality overall."]
+    },
+    "home_decor": {
+        "pos": ["Beautiful craftsmanship. Added an instant touch of class to my living room.",
+                "Stunning colors and robust materials. Very premium build.",
+                "Exceeded my design expectations. Looks exactly like high-end boutique decor.",
+                "Extremely aesthetic! Brings the whole room design together."],
+        "neg": ["A bit smaller than I envisioned, but still looks lovely.",
+                "The lighting/shade is slightly warmer than shown in illustrations.",
+                "Instruction sheet for wall mounting was slightly confusing."]
+    },
+    "fitness": {
+        "pos": ["Extremely durable build. Survives intensive daily training sessions.",
+                "Ergonomic design makes workouts significantly smoother.",
+                "Top-tier performance metrics. Highly recommend for enthusiasts.",
+                "Exceptional build and stability. Commercial gym quality at home."],
+        "neg": ["Quite heavy to move around, but highly stable once in place.",
+                "A bit expensive compared to entry-level alternatives.",
+                "Setup took about an hour, although instructions were clear."]
+    },
+    "books": {
+        "pos": ["A absolute masterpiece. Actionable ideas and exceptionally written.",
+                "Stunning illustrations and page quality. Must-have on your bookshelf.",
+                "Deep, thought-provoking insights that shifted my perspective entirely.",
+                "Clear explanations of complex concepts. Invaluable reference book."],
+        "neg": ["Very dense reading, takes some time to fully digest the material.",
+                "Cover had a small crease upon arrival, but content is gold.",
+                "A bit academic in tone, could have included more real-world examples."]
+    },
+    "automotive": {
+        "pos": ["Robust, high-grade utility. Fits like a glove in my car dashboard.",
+                "Extremely easy to setup and provides outstanding results.",
+                "Heavy-duty construction. Resists wear and weather beautifully.",
+                "Exceptional performance. Solved my vehicle issue instantly."],
+        "neg": ["Cable length was slightly shorter than needed for larger SUVs.",
+                "App interface is a bit basic, though the hardware is great.",
+                "Instructions could have been slightly more detailed."]
+    },
+    "toys": {
+        "pos": ["Keeps the kids engaged for hours! Fantastic design and logic.",
+                "Exceptional durability. Safe materials and bright, vivid colors.",
+                "Very creative design. Stimulates problem solving effectively.",
+                "Outstanding build and precision engineering. A joy to assemble."],
+        "neg": ["Lots of tiny pieces, make sure you don't lose them!",
+                "Required adult assistance to build, but a great bonding activity.",
+                "Battery compartment was slightly tricky to open."]
+    },
+    "groceries": {
+        "pos": ["Incredible depth of flavor. Fresh, aromatic, and rich quality.",
+                "Pure, natural taste with outstanding packaging to preserve freshness.",
+                "Top-tier organic quality. You can really taste the difference.",
+                "Rich, velvety texture. One of the best brands I've tried."],
+        "neg": ["A bit pricey for the quantity, but taste is premium.",
+                "Short expiration window, since it doesn't contain artificial preservatives.",
+                "Jar lid was sealed very tight, needed some effort to open."]
+    }
+}
+def _generate_products_and_reviews(rng: np.random.Generator) -> tuple[list, list]:
+    product_rows = []
+    review_rows = []
+    product_id_counter = 1
     for category in CATEGORIES:
         mx = SEED_MATRICES[category]
         brands = mx["brands"]
         items = mx["items"]
         min_p, max_p = mx["min_p"], mx["max_p"]
         rating_loc, rating_scale = mx["rating_loc"], mx["rating_scale"]
-
-        seen_names: set[str] = set()
+        images = mx["images"]
+        desc_tmpl = mx["desc"]
+        seen_names = set()
         generated = 0
-
         while generated < PRODUCTS_PER_CATEGORY:
-            name = (
-                f"{rng.choice(brands)} "
-                f"{rng.choice(items)} "
-                f"({rng.choice(MODIFIERS)})"
-            )
+            brand = rng.choice(brands)
+            item = rng.choice(items)
+            modifier = rng.choice(MODIFIERS)
+            name = f"{brand} {item} ({modifier})"
             if name in seen_names:
                 continue
-
             seen_names.add(name)
-
             price = int(rng.uniform(min_p, max_p))
             rating = float(np.clip(rng.normal(rating_loc, rating_scale), 1.0, 5.0))
             rating = round(rating, 1)
-
-            rows.append((name, category, price, rating))
+            stock = int(rng.choice([0, 3, 5, 12, 25, 45, 80, 150]))
+            description = desc_tmpl.format(brand=brand, item=item, modifier=modifier)
+            # Map to a deterministic image url
+            img_id = images[hash(name) % len(images)]
+            image_url = f"https://images.unsplash.com/{img_id}?auto=format&fit=crop&w=600&q=80"
+            # Create product row
+            product_rows.append((
+                product_id_counter, name, category, price, rating,
+                brand, item, modifier, stock, description, image_url
+            ))
+            # Create 3 reviews for this product
+            review_templates = CATEGORY_REVIEWS.get(category, CATEGORY_REVIEWS["electronics"])
+            for r_idx in range(3):
+                reviewer = rng.choice(REVIEWERS)
+                # Pick rating stars based on overall rating
+                if rating >= 4.0:
+                    stars = int(rng.choice([4, 5]))
+                    comment = rng.choice(review_templates["pos"])
+                else:
+                    stars = int(rng.choice([2, 3, 4]))
+                    comment = rng.choice(review_templates["neg"] + review_templates["pos"])
+                review_rows.append((
+                    product_id_counter, reviewer, stars, comment
+                ))
+            product_id_counter += 1
             generated += 1
-
-        print(f"  ✓  {category:<12}  {generated} products")
-
-    return rows
-
-
+        print(f"  ✓  {category:<12}  {generated} products (with {generated * 3} reviews)")
+    return product_rows, review_rows
 def seed_complete_database() -> None:
     rng = np.random.default_rng(seed=101)
-
-    print("Generating products …")
-    rows = _generate_products(rng)
-
+    print("Generating products and reviews …")
+    products, reviews = _generate_products_and_reviews(rng)
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-
     cur.executescript("""
+        DROP TABLE IF EXISTS reviews;
         DROP TABLE IF EXISTS products;
+        
         CREATE TABLE products (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            name     TEXT    NOT NULL,
-            category TEXT    NOT NULL,
-            price    REAL    NOT NULL,
-            rating   REAL    NOT NULL
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        TEXT    NOT NULL,
+            category    TEXT    NOT NULL,
+            price       REAL    NOT NULL,
+            rating      REAL    NOT NULL,
+            brand       TEXT,
+            item        TEXT,
+            modifier    TEXT,
+            stock       INTEGER,
+            description TEXT,
+            image_url   TEXT
         );
+        
+        CREATE TABLE reviews (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id  INTEGER NOT NULL,
+            user        TEXT    NOT NULL,
+            stars       INTEGER NOT NULL,
+            comment     TEXT    NOT NULL,
+            timestamp   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        );
+        
         CREATE INDEX IF NOT EXISTS idx_cat_price ON products (category, price);
+        CREATE INDEX IF NOT EXISTS idx_prod_reviews ON reviews (product_id);
     """)
-
     cur.executemany(
-        "INSERT INTO products (name, category, price, rating) VALUES (?, ?, ?, ?)",
-        rows,
+        """INSERT INTO products 
+           (id, name, category, price, rating, brand, item, modifier, stock, description, image_url) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        products,
+    )
+    cur.executemany(
+        "INSERT INTO reviews (product_id, user, stars, comment) VALUES (?, ?, ?, ?)",
+        reviews,
     )
     conn.commit()
-
     # Verification
     cur.execute("SELECT category, COUNT(*) AS n FROM products GROUP BY category ORDER BY category")
     print("\nRow counts per category:")
@@ -201,10 +395,10 @@ def seed_complete_database() -> None:
         print(f"  {cat:<14} {n:>4}")
         total += n
     print(f"  {'TOTAL':<14} {total:>4}")
-
+    cur.execute("SELECT COUNT(*) FROM reviews")
+    total_reviews = cur.fetchone()[0]
+    print(f"  {'REVIEWS':<14} {total_reviews:>4}")
     conn.close()
-    print(f"\ninventory.db ready — {total} rows written.")
-
-
+    print(f"\ninventory.db ready — {total} products and {total_reviews} reviews seeded.")
 if __name__ == "__main__":
     seed_complete_database()
