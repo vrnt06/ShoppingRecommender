@@ -441,8 +441,14 @@ def parse_concierge_query(query: str) -> tuple[str, bool]:
     else:
         return "✦ **Aurora Concierge**: *'I received your request, but could not parse specific parameters. Try specifying a category (e.g. footwear, beauty), a budget (e.g. under 1.5 lakhs), or a rating threshold (e.g. 4.5+ stars).'*", False
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 2 · CACHED DATABASE READ OPERATIONS
+
+def handle_concierge_send():
+    dialogue_input = st.session_state.get("concierge_input", "")
+    if dialogue_input.strip():
+        msg, matched = parse_concierge_query(dialogue_input)
+        st.session_state["concierge_dialogue_msg"] = msg
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -625,7 +631,7 @@ c_logs1.metric("Interactions", st.session_state.interaction_count)
 current_loss = f"{st.session_state.loss_history[-1]:.4f}" if st.session_state.loss_history else "N/A"
 c_logs2.metric("Ranker Loss", current_loss)
 
-if st.sidebar.button("Reset AI Core Preferences", use_container_width=True):
+def reset_ai_preferences():
     # Wipe weights
     if os.path.exists(MODEL_WEIGHTS_FILE):
         try:
@@ -647,10 +653,10 @@ if st.sidebar.button("Reset AI Core Preferences", use_container_width=True):
     st.session_state.budget_filter = 180000
     st.session_state.rating_filter = 4.2
     st.session_state.search_input_val = ""
-
     st.session_state.ranker_model, st.session_state.ranker_optim = _init_ranker()
     st.toast("Model weights and client memory cleared successfully.", icon="🧹")
-    st.rerun()
+
+st.sidebar.button("Reset AI Core Preferences", use_container_width=True, on_click=reset_ai_preferences)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 6 · HEADER AND SEARCH PANEL
@@ -773,18 +779,15 @@ t_curation, t_analytics, t_commerce, t_db, t_exclusions = st.tabs([
 with t_curation:
     # NLP dialogue concierge bar
     st.markdown("<p class='label-muted' style='margin-top:10px;'>Ask Aurora Premium Concierge</p>", unsafe_allow_html=True)
-    c_dialogue, c_dialogue_btn = st.columns([6, 1])
-    dialogue_input = c_dialogue.text_input(
-        "Ask Aurora Concierge...",
-        placeholder="E.g., 'Find me clothing under 5000 with at least 4.5 stars' or 'Show me books about data'",
-        label_visibility="collapsed",
-        key="concierge_input"
-    )
-    if c_dialogue_btn.button("Send", use_container_width=True):
-        if dialogue_input.strip():
-            msg, matched = parse_concierge_query(dialogue_input)
-            st.session_state["concierge_dialogue_msg"] = msg
-            st.rerun()
+    with st.form(key="concierge_form", border=False):
+        c_dialogue, c_dialogue_btn = st.columns([6, 1])
+        dialogue_input = c_dialogue.text_input(
+            "Ask Aurora Concierge...",
+            placeholder="E.g., 'Find me clothing under 5000 with at least 4.5 stars' or 'Show me books about data'",
+            label_visibility="collapsed",
+            key="concierge_input"
+        )
+        c_dialogue_btn.form_submit_button("Send", use_container_width=True, on_click=handle_concierge_send)
 
     # Display dialogue response
     if st.session_state.concierge_dialogue_msg:
@@ -800,7 +803,7 @@ with t_curation:
             comp_ids = st.session_state.comparison_pool
             sql = f"SELECT id, name, category, price, rating, brand, item, modifier, stock, description, image_url FROM products WHERE id IN ({','.join(['?']*len(comp_ids))})"
             with sqlite3.connect(DB_FILE) as conn:
-                comp_df = pd.read_sql_query(sql, conn, params=comp_ids)
+                comp_df = pd.read_sql_query(sql, conn, params=[int(x) for x in comp_ids])
                 
             if not comp_df.empty:
                 comp_vecs = build_vectors_from_df(comp_df, user_budget, user_rating)
@@ -1258,7 +1261,7 @@ with t_commerce:
                 wish_ids = list(wishlist)
                 sql = f"SELECT id, name, price, rating, category FROM products WHERE id IN ({','.join(['?']*len(wish_ids))})"
                 with sqlite3.connect(DB_FILE) as conn:
-                    wish_df = pd.read_sql_query(sql, conn, params=wish_ids)
+                    wish_df = pd.read_sql_query(sql, conn, params=[int(x) for x in wish_ids])
 
                 for _, w_row in wish_df.iterrows():
                     c_wish1, c_wish2 = st.columns([5, 3])
@@ -1348,7 +1351,7 @@ with t_exclusions:
         bl_ids = list(blacklist)
         sql = f"SELECT id, name, price, rating, category FROM products WHERE id IN ({','.join(['?']*len(bl_ids))})"
         with sqlite3.connect(DB_FILE) as conn:
-            blacklisted_df = pd.read_sql_query(sql, conn, params=bl_ids)
+            blacklisted_df = pd.read_sql_query(sql, conn, params=[int(x) for x in bl_ids])
 
         for _, bl_row in blacklisted_df.iterrows():
             c_bl1, c_bl2 = st.columns([5, 3])
