@@ -3,16 +3,22 @@ seed_db.py — Inventory database seeder.
 Generates 2,000 distinct products across 10 categories and writes them to inventory.db,
 along with associated rich metadata (brand, model, stock, descriptions, Unsplash URLs)
 and a robust reviews table with 6,000 generated reviews.
+
 Run once before launching app.py:
     python seed_db.py
 """
+
 import sqlite3
 import numpy as np
+import hashlib
+
 DB_FILE = "inventory.db"
+
 CATEGORIES = [
     "electronics", "footwear", "clothing", "beauty", "home_decor",
     "fitness", "books", "automotive", "toys", "groceries",
 ]
+
 SEED_MATRICES = {
     "electronics": {
         "brands": ["Apple", "Samsung", "Sony", "Dell", "HP", "ASUS", "Lenovo", "Logitech", "LG", "Bose",
@@ -184,15 +190,19 @@ SEED_MATRICES = {
         "desc": "Sourced from the finest natural ingredients, this organic {brand} {item} ({modifier}) offers rich, authentic flavors and dense nutritional value. Perfect for gourmet culinary experiences."
     },
 }
+
 MODIFIERS = [
     "Pro", "Max", "Ultra", "Elite", "Classic", "Series II", "v2",
     "Edition", "Premium", "Advanced", "Signature", "Select", "Core", "Lite", "Plus",
 ]
+
 PRODUCTS_PER_CATEGORY = 200
+
 REVIEWERS = [
     "Alex M.", "S. Taylor", "Jordan K.", "Emma Watson", "Rohan Gupta", "Clara R.",
     "Priyesh S.", "David Miller", "Elena Rostova", "Hiroshi Tanaka", "Sarah Jenkins", "Michael O'Connor"
 ]
+
 CATEGORY_REVIEWS = {
     "electronics": {
         "pos": ["Absolutely amazing quality! The display/sound is top-notch.",
@@ -286,10 +296,13 @@ CATEGORY_REVIEWS = {
                 "Jar lid was sealed very tight, needed some effort to open."]
     }
 }
+
+
 def _generate_products_and_reviews(rng: np.random.Generator) -> tuple[list, list]:
     product_rows = []
     review_rows = []
     product_id_counter = 1
+
     for category in CATEGORIES:
         mx = SEED_MATRICES[category]
         brands = mx["brands"]
@@ -298,29 +311,40 @@ def _generate_products_and_reviews(rng: np.random.Generator) -> tuple[list, list
         rating_loc, rating_scale = mx["rating_loc"], mx["rating_scale"]
         images = mx["images"]
         desc_tmpl = mx["desc"]
+
         seen_names = set()
         generated = 0
+
         while generated < PRODUCTS_PER_CATEGORY:
             brand = rng.choice(brands)
             item = rng.choice(items)
             modifier = rng.choice(MODIFIERS)
+
             name = f"{brand} {item} ({modifier})"
+
             if name in seen_names:
                 continue
+
             seen_names.add(name)
+
             price = int(rng.uniform(min_p, max_p))
             rating = float(np.clip(rng.normal(rating_loc, rating_scale), 1.0, 5.0))
             rating = round(rating, 1)
+
             stock = int(rng.choice([0, 3, 5, 12, 25, 45, 80, 150]))
             description = desc_tmpl.format(brand=brand, item=item, modifier=modifier)
+
             # Map to a deterministic image url
-            img_id = images[hash(name) % len(images)]
+            name_hash = int(hashlib.md5(name.encode('utf-8')).hexdigest(), 16)
+            img_id = images[name_hash % len(images)]
             image_url = f"https://images.unsplash.com/{img_id}?auto=format&fit=crop&w=600&q=80"
+
             # Create product row
             product_rows.append((
                 product_id_counter, name, category, price, rating,
                 brand, item, modifier, stock, description, image_url
             ))
+
             # Create 3 reviews for this product
             review_templates = CATEGORY_REVIEWS.get(category, CATEGORY_REVIEWS["electronics"])
             for r_idx in range(3):
@@ -332,19 +356,28 @@ def _generate_products_and_reviews(rng: np.random.Generator) -> tuple[list, list
                 else:
                     stars = int(rng.choice([2, 3, 4]))
                     comment = rng.choice(review_templates["neg"] + review_templates["pos"])
+
                 review_rows.append((
                     product_id_counter, reviewer, stars, comment
                 ))
+
             product_id_counter += 1
             generated += 1
+
         print(f"  ✓  {category:<12}  {generated} products (with {generated * 3} reviews)")
+
     return product_rows, review_rows
+
+
 def seed_complete_database() -> None:
     rng = np.random.default_rng(seed=101)
+
     print("Generating products and reviews …")
     products, reviews = _generate_products_and_reviews(rng)
+
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
+
     cur.executescript("""
         DROP TABLE IF EXISTS reviews;
         DROP TABLE IF EXISTS products;
@@ -376,17 +409,21 @@ def seed_complete_database() -> None:
         CREATE INDEX IF NOT EXISTS idx_cat_price ON products (category, price);
         CREATE INDEX IF NOT EXISTS idx_prod_reviews ON reviews (product_id);
     """)
+
     cur.executemany(
         """INSERT INTO products 
            (id, name, category, price, rating, brand, item, modifier, stock, description, image_url) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         products,
     )
+
     cur.executemany(
         "INSERT INTO reviews (product_id, user, stars, comment) VALUES (?, ?, ?, ?)",
         reviews,
     )
+
     conn.commit()
+
     # Verification
     cur.execute("SELECT category, COUNT(*) AS n FROM products GROUP BY category ORDER BY category")
     print("\nRow counts per category:")
@@ -395,10 +432,14 @@ def seed_complete_database() -> None:
         print(f"  {cat:<14} {n:>4}")
         total += n
     print(f"  {'TOTAL':<14} {total:>4}")
+
     cur.execute("SELECT COUNT(*) FROM reviews")
     total_reviews = cur.fetchone()[0]
     print(f"  {'REVIEWS':<14} {total_reviews:>4}")
+
     conn.close()
     print(f"\ninventory.db ready — {total} products and {total_reviews} reviews seeded.")
+
+
 if __name__ == "__main__":
     seed_complete_database()
