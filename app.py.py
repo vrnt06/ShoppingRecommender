@@ -59,6 +59,13 @@ def check_and_seed_db():
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reviews'")
                 if not cursor.fetchone():
                     needs_seeding = True
+                
+                # Detect old randomized image seeding
+                if not needs_seeding:
+                    cursor.execute("SELECT COUNT(DISTINCT image_url) FROM products WHERE item = 'OLED Monitor'")
+                    count_row = cursor.fetchone()
+                    if count_row and count_row[0] > 1:
+                        needs_seeding = True
         except Exception:
             needs_seeding = True
             
@@ -960,7 +967,7 @@ with t_curation:
                             st.warning("You can compare up to 3 items at a time.")
                         else:
                             st.session_state.comparison_pool.append(row["id"])
-                            st.toast("Added to comparison list.", icon="⇄")
+                            st.toast("Added to comparison list.", icon="⚖️")
                     st.rerun()
 
                 # Add to Cart Actions
