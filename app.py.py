@@ -74,6 +74,7 @@ def check_and_seed_db():
         try:
             import seed_db
             seed_db.seed_complete_database()
+            st.cache_data.clear()
             st.success("Database successfully initialized/updated with 2,000 products and 6,000 reviews!")
         except Exception as e:
             st.error(f"Failed to auto-seed database: {e}")
@@ -661,6 +662,7 @@ def reset_ai_preferences():
     st.session_state.rating_filter = 4.2
     st.session_state.search_input_val = ""
     st.session_state.ranker_model, st.session_state.ranker_optim = _init_ranker()
+    st.cache_data.clear()
     st.toast("Model weights and client memory cleared successfully.", icon="🧹")
 
 st.sidebar.button("Reset AI Core Preferences", use_container_width=True, on_click=reset_ai_preferences)
