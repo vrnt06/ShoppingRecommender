@@ -28,13 +28,21 @@ SEED_MATRICES = {
                   "Power Bank 20K", "Noise Cancelling Earbuds", "Wi-Fi 7 Router", "External SSD 1TB", "Webcam 1080p"],
         "min_p": 1500, "max_p": 160000, "rating_loc": 4.3, "rating_scale": 0.30,
         "images": [
-            "photo-1546868871-7041f2a55e12", "photo-1505740420928-5e560c06d30e",
-            "photo-1527443224154-c4a3942d3acf", "photo-1587829741301-dc798b83add3",
-            "photo-1615663245857-ac93bb7c39e7", "photo-1542751371-adc38448a05e",
-            "photo-1496181130204-755241524eab", "photo-1588872657578-7efd1f1555ed",
-            "photo-1593305841991-05c297ba4575", "photo-1608043152269-423dbba4e7e1",
-            "photo-1609081219090-a6d81d3085bf", "photo-1590658268037-6bf12165a8df",
-            "photo-1544244015-0df4b3ffc6b0", "photo-1618424181497-157f25b6ddd5"
+            "photo-1511707171634-5f897ff02aa9", # iPhone
+            "photo-1610945265064-0e34e5519bbf", # Galaxy S Ultra
+            "photo-1527443224154-c4a3942d3acf", # OLED Monitor
+            "photo-1505740420928-5e560c06d30e", # Wireless Headphones
+            "photo-1587829741301-dc798b83add3", # Mechanical Keyboard
+            "photo-1615663245857-ac93bb7c39e7", # Gaming Mouse
+            "photo-1496181130204-755241524eab", # UltraBook Laptop
+            "photo-1544244015-0df4b3ffc6b0", # Tablet Pro
+            "photo-1593305841991-05c297ba4575", # 4K Smart TV
+            "photo-1608043152269-423dbba4e7e1", # Bluetooth Speaker
+            "photo-1609081219090-a6d81d3085bf", # Power Bank 20K
+            "photo-1590658268037-6bf12165a8df", # Noise Cancelling Earbuds
+            "photo-1544197150-b99a580bb7a8", # Wi-Fi 7 Router
+            "photo-1618424181497-157f25b6ddd5", # External SSD 1TB
+            "photo-1601524909162-be87252be298"  # Webcam 1080p
         ],
         "desc": "An executive-grade {brand} {item} ({modifier}) designed for high performance. Offers stunning visual clarity, lightning-fast response times, and premium durability for discerning users."
     },
@@ -47,11 +55,21 @@ SEED_MATRICES = {
                   "Skate Leather Shoes", "Slip-On Loafers", "Athletic Training Shoes"],
         "min_p": 1200, "max_p": 22000, "rating_loc": 4.4, "rating_scale": 0.25,
         "images": [
-            "photo-1542291026-7eec264c27ff", "photo-1606107557195-0e29a4b5b4aa",
-            "photo-1595950653106-6c9ebd614d3a", "photo-1549298916-b41d501d3772",
-            "photo-1608231387042-66d1773070a5", "photo-1607522370275-f14206abe5d3",
-            "photo-1539185441755-769473a23570", "photo-1520639888713-7851133b1ed0",
-            "photo-1560343090-f0409e92791a", "photo-1618677831708-0e7fda3148b4"
+            "photo-1542291026-7eec264c27ff", # Air Max Sneakers
+            "photo-1606107557195-0e29a4b5b4aa", # Ultraboost Running Shoes
+            "photo-1608231387042-66d1773070a5", # Nitro Trail Runners
+            "photo-1539185441755-769473a23570", # Gel-Kayano Stability Shoes
+            "photo-1595950653106-6c9ebd614d3a", # Classic Lifestyle Sneakers
+            "photo-1549298916-b41d501d3772", # Walking Comfort Shoes
+            "photo-1607522370275-f14206abe5d3", # Retro Court Shoes
+            "photo-1560343090-f0409e92791a", # Waterproof Hiking Boots
+            "photo-1549298916-b41d501d3772", # Leather Chukka Boots
+            "photo-1520639888713-7851133b1ed0", # Classic Clogs
+            "photo-1603808033192-082d6f74b30e", # Two-Strap Sandals
+            "photo-1607522370275-f14206abe5d3", # Canvas High-Tops
+            "photo-1618677831708-0e7fda3148b4", # Skate Leather Shoes
+            "photo-1533867617858-e7b97e060509", # Slip-On Loafers
+            "photo-1606107557195-0e29a4b5b4aa"  # Athletic Training Shoes
         ],
         "desc": "Engineered for ultimate comfort and durability, the {brand} {item} ({modifier}) features responsive cushioning, slip-resistant soles, and a sleek modern silhouette perfect for daily wear."
     },
@@ -64,11 +82,21 @@ SEED_MATRICES = {
                   "Merino Wool Sweater", "Windbreaker Jacket", "Thermal Base Layer"],
         "min_p": 700, "max_p": 35000, "rating_loc": 4.3, "rating_scale": 0.28,
         "images": [
-            "photo-1521572267360-ee0c2909d518", "photo-1544441893-675973e31985",
-            "photo-1591047139829-d91aecb6caea", "photo-1551799517-eb8f03cb5e6a",
-            "photo-1541099649105-f69ad21f3246", "photo-1507679799987-c73779587ccf",
-            "photo-1620799140408-edc6dcb6d633", "photo-1596755094514-f87e34085b2c",
-            "photo-1624378439575-d8705ad7ae80", "photo-1602810318383-e386cc2a3ccf"
+            "photo-1541099649105-f69ad21f3246", # Slim Fit Jeans
+            "photo-1544441893-675973e31985", # Torrentshell Rain Jacket
+            "photo-1591047139829-d91aecb6caea", # Nuptse Down Parka
+            "photo-1556821840-3a63f95609a7", # Fleece Pullover Hoodie
+            "photo-1551799517-eb8f03cb5e6a", # Tiro Track Pants
+            "photo-1521572267360-ee0c2909d518", # AIRism Cotton Tee
+            "photo-1581655353564-df123a1eb820", # Pique Cotton Polo
+            "photo-1596755094514-f87e34085b2c", # Oxford Button-Down Shirt
+            "photo-1624378439575-d8705ad7ae80", # Classic Chino Pants
+            "photo-1507679799987-c73779587ccf", # Full-Zip Fleece Jacket
+            "photo-1551028719-00167b16eac5", # Rugged Work Jacket
+            "photo-1624378439575-d8705ad7ae80", # Cargo Utility Pants
+            "photo-1620799140408-edc6dcb6d633", # Merino Wool Sweater
+            "photo-1548883354-7622d03aca27", # Windbreaker Jacket
+            "photo-1602810318383-e386cc2a3ccf"  # Thermal Base Layer
         ],
         "desc": "Tailored from exceptionally soft, breathable materials, this {brand} {item} ({modifier}) provides a sophisticated look and all-day comfort. An essential addition to any curated wardrobe."
     },
@@ -81,10 +109,21 @@ SEED_MATRICES = {
                   "Bleu de Chanel Intense", "Radiant Creamy Concealer", "Matte Bullet Lipstick", "Hair Perfector Bond Repair"],
         "min_p": 400, "max_p": 15000, "rating_loc": 4.5, "rating_scale": 0.22,
         "images": [
-            "photo-1608248597481-496100c80836", "photo-1556228720-195a672e8a03",
-            "photo-1598440947619-2c35fc9aa908", "photo-1620916566398-39f1143ab7be",
-            "photo-1612817288484-6f916006741a", "photo-1571781926291-c477ebfd024b",
-            "photo-1526947425960-945c6e72858f", "photo-1617897903246-719242758050"
+            "photo-1608248597481-496100c80836", # Snail Mucin
+            "photo-1571781926291-c477ebfd024b", # Niacinamide
+            "photo-1556228720-195a672e8a03", # Cream
+            "photo-1598440947619-2c35fc9aa908", # Sunscreen
+            "photo-1620916566398-39f1143ab7be", # Lip Mask
+            "photo-1612817288484-6f916006741a", # Liquid Exfoliant
+            "photo-1571781926291-c477ebfd024b", # Night Repair
+            "photo-1620916566398-39f1143ab7be", # Auto-Replenisher
+            "photo-1556228720-195a672e8a03", # Cleanser
+            "photo-1608248597481-496100c80836", # Toner
+            "photo-1526947425960-945c6e72858f", # Sauvage
+            "photo-1526947425960-945c6e72858f", # Bleu de Chanel
+            "photo-1620916566398-39f1143ab7be", # Concealer
+            "photo-1617897903246-719242758050", # Lipstick
+            "photo-1608248597481-496100c80836"  # Bond Repair
         ],
         "desc": "Formulated with dermatologist-approved active ingredients, this {brand} {item} ({modifier}) targets skin vitality, offering a radiant, hydrated complexion and visible results."
     },
@@ -98,10 +137,21 @@ SEED_MATRICES = {
                   "Geometric Desktop Planter", "Studio Writing Desk", "Pure Cool Purifying Fan"],
         "min_p": 500, "max_p": 45000, "rating_loc": 4.3, "rating_scale": 0.28,
         "images": [
-            "photo-1513519245088-0e12902e5a38", "photo-1513694203232-719a280e022f",
-            "photo-1540518614846-7eded433c457", "photo-1586023492125-27b2c045efd7",
-            "photo-1538688525198-9b88f6f53126", "photo-1600210492486-724fe5c67fb0",
-            "photo-1505691938895-1758d7feb511"
+            "photo-1550985543-f47f38aeee65", # Smart LED
+            "photo-1563861826100-9cb868fdcd1d", # Wall Clock
+            "photo-1603006905003-be475563bc59", # Candle
+            "photo-1513519245088-0e12902e5a38", # Abstract Canvas
+            "photo-1513519245088-0e12902e5a38", # Table Runner
+            "photo-1578500494198-246f612d3b3d", # Ceramic Vase
+            "photo-1540518614846-7eded433c457", # Throw Blanket
+            "photo-1507473885765-e6ed057f782c", # Desk Lamp
+            "photo-1595428774223-ef52624120d2", # Floating Shelves
+            "photo-1507473885765-e6ed057f782c", # Salt Lamp
+            "photo-1598300042247-d088f8ab3a91", # Velvet Armchair
+            "photo-1600121848594-d8644e57abab", # Area Rug
+            "photo-1485955900006-10f4d324d411", # Desktop Planter
+            "photo-1518455027359-f3f8164ba6bd", # Writing Desk
+            "photo-1585338107529-13afc5f02586"  # Purifying Fan
         ],
         "desc": "Elevate your living space with this artisan-crafted {brand} {item} ({modifier}). Blends timeless aesthetics with modern functionality, creating a warm and sophisticated ambiance."
     },
@@ -115,9 +165,21 @@ SEED_MATRICES = {
                   "Classic Shaker Cup", "Zip-Up Track Jacket", "Compression Training Shorts"],
         "min_p": 300, "max_p": 180000, "rating_loc": 4.4, "rating_scale": 0.25,
         "images": [
-            "photo-1517838277536-f5f99be501cd", "photo-1571019613454-1cb2f99b2d8b",
-            "photo-1605296867304-46d5465a25f1", "photo-1558017487-06bf9f82613a",
-            "photo-1548690312-e3b507d8c110", "photo-1594737626072-90dc274bc2bd"
+            "photo-1638536532686-d610adfc8e5c", # Dumbbells
+            "photo-1592432678016-e910b452f9a2", # Yoga Mat
+            "photo-1517838277536-f5f99be501cd", # TRX Kit
+            "photo-1579758629938-03607ccdbaba", # Whey
+            "photo-1579758629938-03607ccdbaba", # Whey Isolate
+            "photo-1548690312-e3b507d8c110", # Massager Gun
+            "photo-1508685096489-7aacd43bd3b1", # Smart Tracker
+            "photo-1508685096489-7aacd43bd3b1", # GPS Smartwatch
+            "photo-1517838277536-f5f99be501cd", # Steel Barbell
+            "photo-1594737626072-90dc274bc2bd", # Indoor Bike
+            "photo-1594737626072-90dc274bc2bd", # Rowing Machine
+            "photo-1602143407151-7111542de6e8", # Water Bottle
+            "photo-1579758629938-03607ccdbaba", # Shaker Cup
+            "photo-1548690312-e3b507d8c110", # Track Jacket
+            "photo-1548690312-e3b507d8c110"  # Compression Shorts
         ],
         "desc": "Achieve your peak performance with the {brand} {item} ({modifier}). Built from heavy-duty, gym-grade materials, it's designed to withstand intense workouts and optimize your training metrics."
     },
@@ -132,10 +194,21 @@ SEED_MATRICES = {
                   "Continuous Delivery Frameworks", "The Pragmatic Programmer", "Grokking Algorithms Blueprint"],
         "min_p": 250, "max_p": 8000, "rating_loc": 4.5, "rating_scale": 0.20,
         "images": [
-            "photo-1544947950-fa07a98d237f", "photo-1506880018603-83d5b814b5a6",
-            "photo-1512820790803-83ca734da794", "photo-1495446815901-a7297e633e8d",
-            "photo-1516979187457-637abb4f9353", "photo-1589829085413-56de8ae18c73",
-            "photo-1532012197267-da84d127e765"
+            "photo-1544947950-fa07a98d237f", # Designing Data
+            "photo-1506880018603-83d5b814b5a6", # Deep Learning
+            "photo-1544947950-fa07a98d237f", # Atomic Habits
+            "photo-1495446815901-a7297e633e8d", # Lean Startup
+            "photo-1512820790803-83ca734da794", # Zero to One
+            "photo-1516979187457-637abb4f9353", # Clean Code
+            "photo-1532012197267-da84d127e765", # Algorithms
+            "photo-1544947950-fa07a98d237f", # Intelligent Investor
+            "photo-1506880018603-83d5b814b5a6", # Thinking Fast
+            "photo-1512820790803-83ca734da794", # Sapiens
+            "photo-1495446815901-a7297e633e8d", # Principles
+            "photo-1516979187457-637abb4f9353", # Psychology of Money
+            "photo-1589829085413-56de8ae18c73", # Continuous Delivery
+            "photo-1532012197267-da84d127e765", # Pragmatic Programmer
+            "photo-1544947950-fa07a98d237f"  # Grokking Algorithms
         ],
         "desc": "A masterfully written guide, this edition of {brand} {item} ({modifier}) delivers expert strategies, deep industry insights, and actionable advice to accelerate your learning journey."
     },
@@ -149,9 +222,21 @@ SEED_MATRICES = {
                   "Interior Glass Wipes Tube", "High Power Car Vacuum", "Laser Measured Floor Mats"],
         "min_p": 300, "max_p": 35000, "rating_loc": 4.3, "rating_scale": 0.28,
         "images": [
-            "photo-1486006920555-c77dce18193b", "photo-1617788138017-80ad40651399",
-            "photo-1549399542-7e3f8b79c341", "photo-1563720223185-11003d516935",
-            "photo-1605559424843-9e4c228bf1c2", "photo-1619642751034-765dfdf7c58e"
+            "photo-1563720223185-11003d516935", # Dash Cam
+            "photo-1563720223185-11003d516935", # Smart Dashcam
+            "photo-1549399542-7e3f8b79c341", # FM Transmitter
+            "photo-1607860108855-64acf2078ed9", # Car Wash Kit
+            "photo-1607860108855-64acf2078ed9", # Liquid Wax
+            "photo-1619642751034-765dfdf7c58e", # Jump Starter
+            "photo-1619642751034-765dfdf7c58e", # Tyre Inflator
+            "photo-1619642751034-765dfdf7c58e", # Pressure Gauge
+            "photo-1486006920555-c77dce18193b", # Bulbs
+            "photo-1563720223185-11003d516935", # Wiper Blades
+            "photo-1586444248902-2f64eddc13df", # Phone Mount
+            "photo-1617788138017-80ad40651399", # GPS Navigator
+            "photo-1607860108855-64acf2078ed9", # Glass Wipes
+            "photo-1563720223185-11003d516935", # Car Vacuum
+            "photo-1549399542-7e3f8b79c341"  # Floor Mats
         ],
         "desc": "Protect and optimize your vehicle with the high-performance {brand} {item} ({modifier}). Easy to install and constructed from rugged materials, it ensures longevity and road safety."
     },
@@ -165,9 +250,21 @@ SEED_MATRICES = {
                   "Villainous Strategy Expansion", "Wooden Engineering Blocks", "Modeling Compound 24-Pack"],
         "min_p": 150, "max_p": 85000, "rating_loc": 4.4, "rating_scale": 0.26,
         "images": [
-            "photo-1587654780291-39c9404d746b", "photo-1558060370-d644479cb6f7",
-            "photo-1596461404969-9ae70f2830c1", "photo-1515488042361-404e9250afef",
-            "photo-1566577134770-3d85bb3a9cc4", "photo-1608889175123-8ec330b86f84"
+            "photo-1587654780291-39c9404d746b", # Building Kit
+            "photo-1566577134770-3d85bb3a9cc4", # Supercar Set
+            "photo-1610890716171-6b1bb98ffd09", # Catan Game
+            "photo-1610890716171-6b1bb88ffd09", # Monopoly
+            "photo-1610890716171-6b1bb98ffd09", # Uno Flip
+            "photo-1591989330344-77a83d73010b", # Smart Cube
+            "photo-1527977966376-1c8408f9f108", # Mini Drone
+            "photo-15958060370-d644479cb6f7", # Blaster
+            "photo-1594787318286-3d835c1d207f", # Gift Pack Assortment
+            "photo-1515488042361-404e9250afef", # Dreamhouse Playset
+            "photo-1608889175123-8ec330b86f84", # Collectible Figure
+            "photo-1596461404969-9ae70f2830c1", # Interactive Puppy
+            "photo-1610890716171-6b1bb98ffd09", # Villainous Expansion
+            "photo-1618842676088-c4d48a6a7c9d", # Wooden Blocks
+            "photo-1596461404969-9ae70f2830c1"  # Modeling Compound
         ],
         "desc": "Ignite imagination and cognitive development with the {brand} {item} ({modifier}). Featuring interactive components and high-quality build materials, it provides hours of engaging fun."
     },
@@ -182,10 +279,21 @@ SEED_MATRICES = {
                   "Natural Unsweetened Cocoa", "Caramelized Biscuit Spread", "Hazelnut Cocoa Spread Jar"],
         "min_p": 50, "max_p": 4500, "rating_loc": 4.4, "rating_scale": 0.22,
         "images": [
-            "photo-1542838132-92c53300491e", "photo-1596040033229-a9821ebd058d",
-            "photo-1474979266404-7eaacbcd87c5", "photo-1471193945509-9ad0617afabf",
-            "photo-1576092768241-dec231879fc3", "photo-1509440159596-0249088772ff",
-            "photo-1578985545062-69928b1d9587"
+            "photo-1497515114629-f71d768fd07c", # Coffee Beans
+            "photo-1576092768241-dec231879fc3", # Tea Bags
+            "photo-1474979266404-7eaacbcd87c5", # Olive Oil
+            "photo-1508061253366-f7da158b6cd9", # Almonds
+            "photo-1590080875515-8a3a8dc5735e", # Peanut Butter
+            "photo-1606313564200-e75d5e30476c", # Dark Chocolate
+            "photo-1586444248902-2f64eddc13df", # Rolled Oats
+            "photo-1587049352846-4a222e784d38", # Himalayan Honey
+            "photo-158444248902-2f64eddc13df", # Chia Seeds
+            "photo-1586201375761-83865001e31c", # Basmati Rice
+            "photo-1586444248902-2f64eddc13df", # Corn Flakes
+            "photo-1474979266404-7eaacbcd87c5", # Cooking Oil
+            "photo-1606313564200-e75d5e30476c", # Cocoa
+            "photo-1578985545062-69928b1d9587", # Biscuit Spread
+            "photo-1578985545062-69928b1d9587"  # Cocoa Spread
         ],
         "desc": "Sourced from the finest natural ingredients, this organic {brand} {item} ({modifier}) offers rich, authentic flavors and dense nutritional value. Perfect for gourmet culinary experiences."
     },
@@ -334,9 +442,9 @@ def _generate_products_and_reviews(rng: np.random.Generator) -> tuple[list, list
             stock = int(rng.choice([0, 3, 5, 12, 25, 45, 80, 150]))
             description = desc_tmpl.format(brand=brand, item=item, modifier=modifier)
 
-            # Map to a deterministic image url
-            name_hash = int(hashlib.md5(name.encode('utf-8')).hexdigest(), 16)
-            img_id = images[name_hash % len(images)]
+            # Map to a deterministic image url based strictly on item type
+            item_idx = items.index(item)
+            img_id = images[item_idx]
             image_url = f"https://images.unsplash.com/{img_id}?auto=format&fit=crop&w=600&q=80"
 
             # Create product row
